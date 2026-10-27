@@ -1,0 +1,459 @@
+{
+  "heroViewports": [
+    {
+      "viewport": "1920x1080",
+      "theme": "light",
+      "vw": 1920,
+      "vh": 1080,
+      "hubBg": "rgb(255, 255, 255)",
+      "searchBg": "rgb(255, 255, 255)",
+      "searchHeight": 60,
+      "searchBottom": 592,
+      "pillsBottom": 652,
+      "foldMarginPx": 428,
+      "chipPaddingMaxDiff": 0,
+      "pillPaddingMaxDiff": 0,
+      "chipMirrorMaxDiff": 0,
+      "maxLineEndpointError": 0,
+      "lineIntersectsText": false,
+      "cardTextClipped": false,
+      "placeholderText": "Search guides or errors, like UTF-8, SSL, CRLF, JSON",
+      "hasNextDevIndicator": false
+    },
+    {
+      "viewport": "1920x1080",
+      "theme": "dark",
+      "vw": 1920,
+      "vh": 1080,
+      "hubBg": "rgb(20, 27, 51)",
+      "searchBg": "rgb(20, 27, 51)",
+      "searchHeight": 60,
+      "searchBottom": 592,
+      "pillsBottom": 652,
+      "foldMarginPx": 428,
+      "chipPaddingMaxDiff": 0,
+      "pillPaddingMaxDiff": 0,
+      "chipMirrorMaxDiff": 0,
+      "maxLineEndpointError": 0,
+      "lineIntersectsText": false,
+      "cardTextClipped": false,
+      "placeholderText": "Search guides or errors, like UTF-8, SSL, CRLF, JSON",
+      "hasNextDevIndicator": false
+    },
+    {
+      "viewport": "1440x800",
+      "theme": "light",
+      "vw": 1440,
+      "vh": 800,
+      "hubBg": "rgb(255, 255, 255)",
+      "searchBg": "rgb(255, 255, 255)",
+      "searchHeight": 60,
+      "searchBottom": 592,
+      "pillsBottom": 652,
+      "foldMarginPx": 148,
+      "chipPaddingMaxDiff": 0,
+      "pillPaddingMaxDiff": 0,
+      "chipMirrorMaxDiff": 0,
+      "maxLineEndpointError": 0,
+      "lineIntersectsText": false,
+      "cardTextClipped": false,
+      "placeholderText": "Search guides or errors, like UTF-8, SSL, CRLF, JSON",
+      "hasNextDevIndicator": false
+    },
+    {
+      "viewport": "1440x800",
+      "theme": "dark",
+      "vw": 1440,
+      "vh": 800,
+      "hubBg": "rgb(20, 27, 51)",
+      "searchBg": "rgb(20, 27, 51)",
+      "searchHeight": 60,
+      "searchBottom": 592,
+      "pillsBottom": 652,
+      "foldMarginPx": 148,
+      "chipPaddingMaxDiff": 0,
+      "pillPaddingMaxDiff": 0,
+      "chipMirrorMaxDiff": 0,
+      "maxLineEndpointError": 0,
+      "lineIntersectsText": false,
+      "cardTextClipped": false,
+      "placeholderText": "Search guides or errors, like UTF-8, SSL, CRLF, JSON",
+      "hasNextDevIndicator": false
+    },
+    {
+      "viewport": "1366x768",
+      "theme": "light",
+      "vw": 1366,
+      "vh": 768,
+      "hubBg": "rgb(255, 255, 255)",
+      "searchBg": "rgb(255, 255, 255)",
+      "searchHeight": 60,
+      "searchBottom": 588,
+      "pillsBottom": 648,
+      "foldMarginPx": 120,
+      "chipPaddingMaxDiff": 0,
+      "pillPaddingMaxDiff": 0,
+      "chipMirrorMaxDiff": 0,
+      "maxLineEndpointError": 0,
+      "lineIntersectsText": false,
+      "cardTextClipped": false,
+      "placeholderText": "Search guides or errors, like UTF-8, SSL, CRLF, JSON",
+      "hasNextDevIndicator": false
+    },
+    {
+      "viewport": "1366x768",
+      "theme": "dark",
+      "vw": 1366,
+      "vh": 768,
+      "hubBg": "rgb(20, 27, 51)",
+      "searchBg": "rgb(20, 27, 51)",
+      "searchHeight": 60,
+      "searchBottom": 588,
+      "pillsBottom": 648,
+      "foldMarginPx": 120,
+      "chipPaddingMaxDiff": 0,
+      "pillPaddingMaxDiff": 0,
+      "chipMirrorMaxDiff": 0,
+      "maxLineEndpointError": 0,
+      "lineIntersectsText": false,
+      "cardTextClipped": false,
+      "placeholderText": "Search guides or errors, like UTF-8, SSL, CRLF, JSON",
+      "hasNextDevIndicator": false
+    },
+    {
+      "viewport": "1024x768",
+      "theme": "light",
+      "vw": 1024,
+      "vh": 768,
+      "hubBg": "rgb(255, 255, 255)",
+      "searchBg": "rgb(255, 255, 255)",
+      "searchHeight": 60,
+      "searchBottom": 556,
+      "pillsBottom": 616,
+      "foldMarginPx": 152,
+      "chipPaddingMaxDiff": 0,
+      "pillPaddingMaxDiff": 0,
+      "chipMirrorMaxDiff": 0,
+      "maxLineEndpointError": 0,
+      "lineIntersectsText": false,
+      "cardTextClipped": false,
+      "placeholderText": "Search guides or errors, like UTF-8, SSL, CRLF, JSON",
+      "hasNextDevIndicator": false
+    },
+    {
+      "viewport": "1024x768",
+      "theme": "dark",
+      "vw": 1024,
+      "vh": 768,
+      "hubBg": "rgb(20, 27, 51)",
+      "searchBg": "rgb(20, 27, 51)",
+      "searchHeight": 60,
+      "searchBottom": 556,
+      "pillsBottom": 616,
+      "foldMarginPx": 152,
+      "chipPaddingMaxDiff": 0,
+      "pillPaddingMaxDiff": 0,
+      "chipMirrorMaxDiff": 0,
+      "maxLineEndpointError": 0,
+      "lineIntersectsText": false,
+      "cardTextClipped": false,
+      "placeholderText": "Search guides or errors, like UTF-8, SSL, CRLF, JSON",
+      "hasNextDevIndicator": false
+    },
+    {
+      "viewport": "768x1024",
+      "theme": "light",
+      "vw": 768,
+      "vh": 1024,
+      "hubBg": "rgb(255, 255, 255)",
+      "searchBg": "rgb(255, 255, 255)",
+      "searchHeight": 60,
+      "searchBottom": 533,
+      "pillsBottom": 593,
+      "foldMarginPx": 431,
+      "chipPaddingMaxDiff": 0,
+      "pillPaddingMaxDiff": 0,
+      "chipMirrorMaxDiff": 0,
+      "maxLineEndpointError": 0,
+      "lineIntersectsText": false,
+      "cardTextClipped": false,
+      "placeholderText": "Search guides or errors, like UTF-8, SSL, CRLF, JSON",
+      "hasNextDevIndicator": false
+    },
+    {
+      "viewport": "768x1024",
+      "theme": "dark",
+      "vw": 768,
+      "vh": 1024,
+      "hubBg": "rgb(20, 27, 51)",
+      "searchBg": "rgb(20, 27, 51)",
+      "searchHeight": 60,
+      "searchBottom": 533,
+      "pillsBottom": 593,
+      "foldMarginPx": 431,
+      "chipPaddingMaxDiff": 0,
+      "pillPaddingMaxDiff": 0,
+      "chipMirrorMaxDiff": 0,
+      "maxLineEndpointError": 0,
+      "lineIntersectsText": false,
+      "cardTextClipped": false,
+      "placeholderText": "Search guides or errors, like UTF-8, SSL, CRLF, JSON",
+      "hasNextDevIndicator": false
+    },
+    {
+      "viewport": "390x844",
+      "theme": "light",
+      "vw": 390,
+      "vh": 844,
+      "hubBg": "rgb(255, 255, 255)",
+      "searchBg": "rgb(255, 255, 255)",
+      "searchHeight": 56,
+      "searchBottom": 493,
+      "pillsBottom": 607,
+      "foldMarginPx": 237,
+      "chipPaddingMaxDiff": 0,
+      "pillPaddingMaxDiff": 0,
+      "chipMirrorMaxDiff": 0,
+      "maxLineEndpointError": 0,
+      "lineIntersectsText": false,
+      "cardTextClipped": false,
+      "placeholderText": "Search guides or errors",
+      "hasNextDevIndicator": false
+    },
+    {
+      "viewport": "390x844",
+      "theme": "dark",
+      "vw": 390,
+      "vh": 844,
+      "hubBg": "rgb(20, 27, 51)",
+      "searchBg": "rgb(20, 27, 51)",
+      "searchHeight": 56,
+      "searchBottom": 493,
+      "pillsBottom": 607,
+      "foldMarginPx": 237,
+      "chipPaddingMaxDiff": 0,
+      "pillPaddingMaxDiff": 0,
+      "chipMirrorMaxDiff": 0,
+      "maxLineEndpointError": 0,
+      "lineIntersectsText": false,
+      "cardTextClipped": false,
+      "placeholderText": "Search guides or errors",
+      "hasNextDevIndicator": false
+    }
+  ],
+  "overflowSweep": [
+    {
+      "route": "/",
+      "width": 375,
+      "overflow": false
+    },
+    {
+      "route": "/",
+      "width": 768,
+      "overflow": false
+    },
+    {
+      "route": "/",
+      "width": 1440,
+      "overflow": false
+    },
+    {
+      "route": "/category/how-to-fixes",
+      "width": 375,
+      "overflow": false
+    },
+    {
+      "route": "/category/how-to-fixes",
+      "width": 768,
+      "overflow": false
+    },
+    {
+      "route": "/category/how-to-fixes",
+      "width": 1440,
+      "overflow": false
+    },
+    {
+      "route": "/category/text-guides",
+      "width": 375,
+      "overflow": false
+    },
+    {
+      "route": "/category/text-guides",
+      "width": 768,
+      "overflow": false
+    },
+    {
+      "route": "/category/text-guides",
+      "width": 1440,
+      "overflow": false
+    },
+    {
+      "route": "/category/solutions",
+      "width": 375,
+      "overflow": false
+    },
+    {
+      "route": "/category/solutions",
+      "width": 768,
+      "overflow": false
+    },
+    {
+      "route": "/category/solutions",
+      "width": 1440,
+      "overflow": false
+    },
+    {
+      "route": "/article/fix-corrupted-utf8-mojibake-text-encoding",
+      "width": 375,
+      "overflow": false
+    },
+    {
+      "route": "/article/fix-corrupted-utf8-mojibake-text-encoding",
+      "width": 768,
+      "overflow": false
+    },
+    {
+      "route": "/article/fix-corrupted-utf8-mojibake-text-encoding",
+      "width": 1440,
+      "overflow": false
+    },
+    {
+      "route": "/about",
+      "width": 375,
+      "overflow": false
+    },
+    {
+      "route": "/about",
+      "width": 768,
+      "overflow": false
+    },
+    {
+      "route": "/about",
+      "width": 1440,
+      "overflow": false
+    },
+    {
+      "route": "/contact",
+      "width": 375,
+      "overflow": false
+    },
+    {
+      "route": "/contact",
+      "width": 768,
+      "overflow": false
+    },
+    {
+      "route": "/contact",
+      "width": 1440,
+      "overflow": false
+    },
+    {
+      "route": "/privacy-policy",
+      "width": 375,
+      "overflow": false
+    },
+    {
+      "route": "/privacy-policy",
+      "width": 768,
+      "overflow": false
+    },
+    {
+      "route": "/privacy-policy",
+      "width": 1440,
+      "overflow": false
+    },
+    {
+      "route": "/terms",
+      "width": 375,
+      "overflow": false
+    },
+    {
+      "route": "/terms",
+      "width": 768,
+      "overflow": false
+    },
+    {
+      "route": "/terms",
+      "width": 1440,
+      "overflow": false
+    },
+    {
+      "route": "/disclaimer",
+      "width": 375,
+      "overflow": false
+    },
+    {
+      "route": "/disclaimer",
+      "width": 768,
+      "overflow": false
+    },
+    {
+      "route": "/disclaimer",
+      "width": 1440,
+      "overflow": false
+    },
+    {
+      "route": "/sitemap-page",
+      "width": 375,
+      "overflow": false
+    },
+    {
+      "route": "/sitemap-page",
+      "width": 768,
+      "overflow": false
+    },
+    {
+      "route": "/sitemap-page",
+      "width": 1440,
+      "overflow": false
+    },
+    {
+      "route": "/this-route-does-not-exist-404",
+      "width": 375,
+      "overflow": false
+    },
+    {
+      "route": "/this-route-does-not-exist-404",
+      "width": 768,
+      "overflow": false
+    },
+    {
+      "route": "/this-route-does-not-exist-404",
+      "width": 1440,
+      "overflow": false
+    },
+    {
+      "route": "/",
+      "width": 320,
+      "overflow": false
+    },
+    {
+      "route": "/",
+      "width": 2560,
+      "overflow": false
+    }
+  ],
+  "shortcutTests": {
+    "windows": {
+      "heroChip": "Ctrl K",
+      "navChip": "Ctrl K",
+      "ariaKeyShortcuts": "Control+K Meta+K"
+    },
+    "mac": {
+      "heroChip": "⌘K",
+      "navChip": "⌘K"
+    },
+    "slashOpenedModal": true,
+    "ctrlKOpenedModal": true
+  },
+  "contrastChecks": {
+    "lightInkOnSurface": 20.87,
+    "lightNavyOnSurface": 16.6,
+    "lightSecondaryOnSurface": 13.34,
+    "lightMutedAndPlaceholderOnSurface": 5.81,
+    "darkInkOnSurface": 15.88,
+    "darkMutedOnSurface": 6.99
+  },
+  "consoleErrors": [],
+  "hydrationWarnings": []
+}

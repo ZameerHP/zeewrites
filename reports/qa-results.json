@@ -1,0 +1,52 @@
+{
+  "screenshotsCaptured": 78,
+  "overflowFailures": [
+    {
+      "route": "/",
+      "width": 320
+    },
+    {
+      "route": "/category/how-to-fixes",
+      "width": 320
+    },
+    {
+      "route": "/article/json-schema-validation-api-payload-minification",
+      "width": 320
+    },
+    {
+      "route": "/about",
+      "width": 320
+    },
+    {
+      "route": "/contact",
+      "width": 320
+    },
+    {
+      "route": "/privacy-policy",
+      "width": 320
+    },
+    {
+      "route": "/privacy-policy",
+      "width": 360
+    },
+    {
+      "route": "/privacy-policy",
+      "width": 375
+    },
+    {
+      "route": "/privacy-policy",
+      "width": 390
+    },
+    {
+      "route": "/privacy-policy",
+      "width": 414
+    }
+  ],
+  "interactiveChecks": {
+    "categoryFilterTabs": false,
+    "themeToggleAndPersistence": false,
+    "contactFormValidation": false,
+    "mobileDrawerAccessible": false
+  },
+  "brokenLinks": []
+}
