@@ -227,21 +227,7 @@ export function SiteProvider({
 
   const upsertArticle = useCallback(
     async (article: Article): Promise<boolean> => {
-      try {
-        const res = await fetch("/api/cms", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "upsert_article", article }),
-        });
-        if (res.ok) {
-          const { db } = await res.json();
-          setArticles(db.articles);
-          localStorage.setItem(LOCAL_STORAGE_CMS_KEY, JSON.stringify(db));
-          return true;
-        }
-      } catch {
-        // Offline fallback
-      }
+      // 1. Optimistic update
       setArticles((prev) => {
         const idx = prev.findIndex(
           (a) => a.id === article.id || a.slug === article.slug
@@ -260,30 +246,37 @@ export function SiteProvider({
         }
         return next;
       });
-      return true;
-    },
-    [settings]
-  );
 
-  const deleteArticle = useCallback(
-    async (id: string): Promise<boolean> => {
+      // 2. Persist to API
       try {
         const res = await fetch("/api/cms", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "delete_article", id }),
+          body: JSON.stringify({ action: "upsert_article", article }),
         });
         if (res.ok) {
           const { db } = await res.json();
-          setArticles(db.articles);
-          localStorage.setItem(LOCAL_STORAGE_CMS_KEY, JSON.stringify(db));
+          if (Array.isArray(db?.articles)) {
+            setArticles(db.articles);
+            localStorage.setItem(LOCAL_STORAGE_CMS_KEY, JSON.stringify(db));
+          }
+          router.refresh();
           return true;
         }
-      } catch {
-        // fallback
+      } catch (err) {
+        console.error("upsertArticle network error:", err);
       }
+      router.refresh();
+      return true;
+    },
+    [settings, router]
+  );
+
+  const deleteArticle = useCallback(
+    async (id: string): Promise<boolean> => {
+      // 1. Optimistic update
       setArticles((prev) => {
-        const next = prev.filter((a) => a.id !== id);
+        const next = prev.filter((a) => a.id !== id && a.slug !== id);
         try {
           localStorage.setItem(
             LOCAL_STORAGE_CMS_KEY,
@@ -294,9 +287,30 @@ export function SiteProvider({
         }
         return next;
       });
+
+      // 2. Persist deletion to API
+      try {
+        const res = await fetch("/api/cms", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "delete_article", id }),
+        });
+        if (res.ok) {
+          const { db } = await res.json();
+          if (Array.isArray(db?.articles)) {
+            setArticles(db.articles);
+            localStorage.setItem(LOCAL_STORAGE_CMS_KEY, JSON.stringify(db));
+          }
+          router.refresh();
+          return true;
+        }
+      } catch (err) {
+        console.error("deleteArticle network error:", err);
+      }
+      router.refresh();
       return true;
     },
-    [settings]
+    [settings, router]
   );
 
   const updateSettings = useCallback(
