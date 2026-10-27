@@ -1,5 +1,84 @@
 {
-  "articles": [],
+  "articles": [
+    {
+      "id": "art-test-dns",
+      "slug": "how-to-fix-dns-latency",
+      "title": "How to Fix DNS Latency on Windows 11",
+      "subtitle": "A step-by-step diagnostic runbook for speeding up DNS lookups.",
+      "excerpt": "Learn how to benchmark DNS resolvers and flush stale caches on Windows 11.",
+      "category": "how-to-fixes",
+      "publishedAt": "2026-10-27T16:43:10.482Z",
+      "updatedAt": "2026-10-27T16:43:10.483Z",
+      "testedOn": "Windows 11",
+      "readingTimeMinutes": 4,
+      "wordCount": 420,
+      "featured": true,
+      "status": "published",
+      "primaryKeyword": "fix DNS latency",
+      "metaTitle": "How to Fix DNS Latency on Windows 11 | Zee Writes",
+      "metaDescription": "Learn how to benchmark DNS resolvers and flush stale caches on Windows 11.",
+      "coverImage": {
+        "url": "/images/diagrams/ssl-handshake.svg",
+        "alt": "DNS Latency Fix Diagram",
+        "caption": "Step-by-step DNS troubleshooting overview",
+        "width": 1200,
+        "height": 750,
+        "diagramType": "ssl-handshake"
+      },
+      "verifiedTakeaway": {
+        "symptom": "Websites take 2 to 4 seconds before starting to load",
+        "rootCause": "ISP DNS resolver queue backlog or negative cache TTL lock",
+        "instantFix": "Switch network adapter IPv4 DNS to 1.1.1.1 and 8.8.8.8 and flush DNS cache",
+        "estimatedFixTime": "3 minutes",
+        "testedPlatforms": [
+          "Windows 11",
+          "Windows 10"
+        ]
+      },
+      "howToSteps": [
+        {
+          "stepNumber": 1,
+          "name": "Flush the Local Windows DNS Resolver Cache",
+          "text": "Open Terminal or PowerShell as Administrator and run the flush command.",
+          "commandOrCode": "ipconfig /flushdns",
+          "proTip": "Make sure you see 'Successfully flushed the DNS Resolver Cache'."
+        }
+      ],
+      "sections": [
+        {
+          "id": "why-dns-slows-down",
+          "heading": "Why DNS Lookups Stall Your Connection",
+          "paragraphs": [
+            "Before your browser downloads the first byte of a webpage, it must resolve the domain name to an IP address.",
+            "If your default router DNS relay is congested, switching to a high-speed Anycast resolver resolves domains in under 20 milliseconds."
+          ]
+        }
+      ],
+      "faqs": [
+        {
+          "question": "Does flushing DNS delete any saved passwords?",
+          "answer": "No. It only clears the temporary table of mapped hostnames and IP addresses."
+        }
+      ],
+      "author": {
+        "name": "Zee",
+        "role": "Author & Editor",
+        "credentials": "",
+        "bio": "Zee writes the technical guides and fixes.",
+        "avatarInitials": "Z",
+        "yearsExperience": 5,
+        "verifiedFixesPublished": 50
+      },
+      "tags": [
+        "DNS",
+        "Windows 11",
+        "Network"
+      ],
+      "relatedSlugs": [],
+      "helpfulYes": 14,
+      "helpfulNo": 0
+    }
+  ],
   "settings": {
     "siteName": "Zee Writes",
     "siteUrl": "https://zeewrites.com",

@@ -15,8 +15,14 @@ export async function generateMetadata({
   params,
 }: ArticlePageProps): Promise<Metadata> {
   const { slug } = await params;
+  const decodedSlug = decodeURIComponent(slug).toLowerCase().trim();
   const { articles, settings } = await getDatabase();
-  const article = articles.find((a) => a.slug === slug);
+  const article = articles.find(
+    (a) =>
+      a.slug.toLowerCase().trim() === decodedSlug ||
+      a.slug === slug ||
+      a.id === slug
+  );
 
   if (!article) {
     return {
@@ -55,8 +61,14 @@ export async function generateMetadata({
 
 export default async function ArticlePage({ params }: ArticlePageProps) {
   const { slug } = await params;
+  const decodedSlug = decodeURIComponent(slug).toLowerCase().trim();
   const { articles, settings } = await getDatabase();
-  const article = articles.find((a) => a.slug === slug) || articles[0];
+  const article = articles.find(
+    (a) =>
+      a.slug.toLowerCase().trim() === decodedSlug ||
+      a.slug === slug ||
+      a.id === slug
+  );
 
   if (!article) {
     notFound();
