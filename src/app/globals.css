@@ -125,6 +125,12 @@
   text-rendering: optimizeLegibility;
 }
 
+.hero-interactive-card:hover,
+.hero-interactive-card:focus-visible {
+  transform: translateY(-4px) rotate(0deg) !important;
+  animation-play-state: paused;
+}
+
 /* Card-in-Card Inset Panel Gradient */
 .inset-vignette-panel {
   background: linear-gradient(

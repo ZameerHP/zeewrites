@@ -272,70 +272,78 @@ export function HomeContentView({ initialArticles }: HomeContentViewProps) {
 
           {/* Two Solid Floating Cards Flanking Headline at Mid Height (1024px and up) */}
           <div
-            aria-hidden="true"
-            className="hidden lg:block pointer-events-none absolute inset-x-0 top-[46%] -translate-y-1/2 max-w-[1380px] mx-auto px-4 xl:px-10 z-10"
+            className="hidden lg:block absolute inset-x-0 top-[46%] -translate-y-1/2 max-w-[1380px] mx-auto px-4 xl:px-10 z-20 pointer-events-none"
           >
-            {/* Left Floating Card: Network & SSL (-8 deg) */}
+            {/* Left Floating Card: Free Tech Tools (-8 deg tilt) */}
             <div
               id="hero-floating-card-left"
               style={{ animationDelay: "580ms" }}
-              className="animate-hero-rise absolute left-3 xl:left-10 -top-[58px]"
+              className="animate-hero-rise absolute left-3 xl:left-10 -top-[58px] pointer-events-auto"
             >
               <div className="lg:scale-[0.85] xl:scale-100 origin-left">
-                <div className="w-[240px] min-h-[120px] rounded-[20px] bg-surface shadow-2 border border-hairline p-4 flex flex-col justify-between gap-2.5 animate-float-left rotated-card-left">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-[13px] font-semibold text-ink leading-tight">
-                      Network &amp; SSL
+                <Link
+                  href="/tools"
+                  aria-label="Free Tech Tools: Use them instantly"
+                  className="hero-interactive-card group flex items-center justify-between w-[236px] h-[76px] rounded-[18px] bg-surface shadow-2 border border-hairline hover:border-[#4a74f0]/40 px-3.5 py-3 transition-[transform,box-shadow,border-color] duration-hover ease-out-expo animate-float-left rotated-card-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4a74f0] focus-visible:ring-offset-2 hover:shadow-3"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className="w-[38px] h-[38px] rounded-[12px] bg-[#e6eefe] dark:bg-[#1e2a4a] flex items-center justify-center shrink-0">
+                      <Wrench
+                        className="w-[18px] h-[18px] text-navy shrink-0"
+                        strokeWidth={1.75}
+                      />
                     </span>
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#e8f7ee] text-[#1f7a45] text-[12px] font-medium leading-tight shrink-0">
-                      <Check className="w-3 h-3 text-[#1f7a45]" strokeWidth={2} />
-                      <span>Fixed</span>
+                    <span className="flex flex-col justify-center min-w-0 text-left">
+                      <span className="text-[15px] font-semibold text-navy leading-[1.2] truncate">
+                        Free Tech Tools
+                      </span>
+                      <span className="text-[12.5px] font-normal text-muted leading-[1.25] truncate mt-0.5">
+                        Use them instantly
+                      </span>
                     </span>
                   </div>
-
-                  <div className="px-2.5 py-2 rounded-[10px] bg-[#fef2f2] dark:bg-[#2a1622] border border-[#fecaca]/80 dark:border-[#f87171]/25 font-mono text-[14px] tracking-[-0.02em] text-[#991b1b] dark:text-[#fca5a5] font-medium whitespace-nowrap text-center">
-                    ERR_SSL_PROTOCOL_ERROR
-                  </div>
-                </div>
+                  <ArrowRight
+                    className="w-4 h-4 text-muted group-hover:text-navy group-hover:translate-x-0.5 transition-[transform,color] duration-micro shrink-0 ml-2"
+                    strokeWidth={1.75}
+                  />
+                </Link>
               </div>
             </div>
 
-            {/* Right Floating Card: UTF-8 Encoding (+8 deg, opposite float phase) */}
+            {/* Right Floating Card: Latest Articles (+8 deg tilt) */}
             <div
               id="hero-floating-card-right"
               style={{ animationDelay: "580ms" }}
-              className="animate-hero-rise absolute right-3 xl:right-10 -top-[58px]"
+              className="animate-hero-rise absolute right-3 xl:right-10 -top-[58px] pointer-events-auto"
             >
               <div className="lg:scale-[0.85] xl:scale-100 origin-right">
-                <div
+                <Link
+                  href="/category/how-to-fixes"
+                  aria-label="Latest Articles: Fresh guides and fixes"
                   style={{ animationDelay: "-3.5s" }}
-                  className="w-[240px] min-h-[120px] rounded-[20px] bg-surface shadow-2 border border-hairline p-4 flex flex-col justify-between gap-2 animate-float-right rotated-card-right"
+                  className="hero-interactive-card group flex items-center justify-between w-[236px] h-[76px] rounded-[18px] bg-surface shadow-2 border border-hairline hover:border-[#4a74f0]/40 px-3.5 py-3 transition-[transform,box-shadow,border-color] duration-hover ease-out-expo animate-float-right rotated-card-right focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4a74f0] focus-visible:ring-offset-2 hover:shadow-3"
                 >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-[13px] font-semibold text-ink leading-tight">
-                      UTF-8 Encoding
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className="w-[38px] h-[38px] rounded-[12px] bg-[#e6eefe] dark:bg-[#1e2a4a] flex items-center justify-center shrink-0">
+                      <FileText
+                        className="w-[18px] h-[18px] text-navy shrink-0"
+                        strokeWidth={1.75}
+                      />
                     </span>
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#e8f7ee] text-[#1f7a45] text-[12px] font-medium leading-tight shrink-0">
-                      <Check className="w-3 h-3 text-[#1f7a45]" strokeWidth={2} />
-                      <span>Fixed</span>
-                    </span>
-                  </div>
-
-                  <div className="rounded-[10px] bg-[#f4f7fd] dark:bg-[#1c2646] border border-hairline px-3 py-1.5 space-y-1 font-mono text-[15px] leading-tight">
-                    <div className="flex items-center justify-between text-ink">
-                      <span className="text-muted">{"\u00C3\u00A9"}</span>
-                      <span className="text-muted">{"\u2192"}</span>
-                      <span className="font-semibold text-navy">{"\u00E9"}</span>
-                    </div>
-                    <div className="flex items-center justify-between text-ink">
-                      <span className="text-muted">{"\u00E2\u20AC\u2122"}</span>
-                      <span className="text-muted">{"\u2192"}</span>
-                      <span className="font-semibold text-navy">
-                        {"\u2019"}
+                    <span className="flex flex-col justify-center min-w-0 text-left">
+                      <span className="text-[15px] font-semibold text-navy leading-[1.2] truncate">
+                        Latest Articles
                       </span>
-                    </div>
+                      <span className="text-[12.5px] font-normal text-muted leading-[1.25] truncate mt-0.5">
+                        Fresh guides and fixes
+                      </span>
+                    </span>
                   </div>
-                </div>
+                  <ArrowRight
+                    className="w-4 h-4 text-muted group-hover:text-navy group-hover:translate-x-0.5 transition-[transform,color] duration-micro shrink-0 ml-2"
+                    strokeWidth={1.75}
+                  />
+                </Link>
               </div>
             </div>
           </div>
