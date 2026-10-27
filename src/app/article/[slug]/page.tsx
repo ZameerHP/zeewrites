@@ -7,6 +7,19 @@ import { ArticleReaderView } from "@/components/article/ArticleReaderView";
 
 export const dynamic = "force-dynamic";
 
+function normalizeSlug(s: string): string {
+  try {
+    return decodeURIComponent(s)
+      .toLowerCase()
+      .trim()
+      .replace(/['"]/g, "")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+  } catch {
+    return s.toLowerCase().trim();
+  }
+}
+
 interface ArticlePageProps {
   params: Promise<{ slug: string }>;
 }
@@ -15,14 +28,14 @@ export async function generateMetadata({
   params,
 }: ArticlePageProps): Promise<Metadata> {
   const { slug } = await params;
-  const decodedSlug = decodeURIComponent(slug).toLowerCase().trim();
+  const target = normalizeSlug(slug);
+  const rawTarget = decodeURIComponent(slug).toLowerCase().trim();
   const { articles, settings } = await getDatabase();
-  const article = articles.find(
-    (a) =>
-      a.slug.toLowerCase().trim() === decodedSlug ||
-      a.slug === slug ||
-      a.id === slug
-  );
+  const article = articles.find((a) => {
+    const s = normalizeSlug(a.slug);
+    const rawS = a.slug.toLowerCase().trim();
+    return s === target || rawS === rawTarget || a.slug === slug || a.id === slug;
+  });
 
   if (!article) {
     return {
@@ -61,14 +74,14 @@ export async function generateMetadata({
 
 export default async function ArticlePage({ params }: ArticlePageProps) {
   const { slug } = await params;
-  const decodedSlug = decodeURIComponent(slug).toLowerCase().trim();
+  const target = normalizeSlug(slug);
+  const rawTarget = decodeURIComponent(slug).toLowerCase().trim();
   const { articles, settings } = await getDatabase();
-  const article = articles.find(
-    (a) =>
-      a.slug.toLowerCase().trim() === decodedSlug ||
-      a.slug === slug ||
-      a.id === slug
-  );
+  const article = articles.find((a) => {
+    const s = normalizeSlug(a.slug);
+    const rawS = a.slug.toLowerCase().trim();
+    return s === target || rawS === rawTarget || a.slug === slug || a.id === slug;
+  });
 
   if (!article) {
     notFound();
@@ -82,7 +95,7 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <ArticleReaderView initialArticle={article} slug={slug} />
+      <ArticleReaderView initialArticle={article} slug={article.slug} />
     </>
   );
 }

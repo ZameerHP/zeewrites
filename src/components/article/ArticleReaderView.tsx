@@ -30,7 +30,15 @@ export function ArticleReaderView({
   const { articles, scrollToElement, showToast } = useSite();
 
   const article = useMemo(() => {
-    return articles.find((a) => a.slug === slug) || initialArticle;
+    const target = slug.toLowerCase().trim();
+    return (
+      articles.find(
+        (a) =>
+          a.slug.toLowerCase().trim() === target ||
+          a.id === initialArticle.id ||
+          a.slug === slug
+      ) || initialArticle
+    );
   }, [articles, slug, initialArticle]);
 
   const category = CATEGORIES[article.category];
