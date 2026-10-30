@@ -127,7 +127,7 @@ export async function POST(req: NextRequest) {
       recordLoginAttempt(ip, true);
       const token = createSessionToken();
 
-      const response = NextResponse.json({ ok: true, message: "Unlocked" });
+      const response = NextResponse.json({ ok: true, message: "Unlocked", token });
       response.cookies.set({
         name: SESSION_COOKIE_NAME,
         value: token,

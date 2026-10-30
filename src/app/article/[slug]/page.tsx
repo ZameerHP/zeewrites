@@ -6,6 +6,7 @@ import { generateArticleJsonLd } from "@/lib/schema";
 import { ArticleReaderView } from "@/components/article/ArticleReaderView";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 function normalizeSlug(s: string): string {
   try {

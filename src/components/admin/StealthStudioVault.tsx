@@ -211,9 +211,19 @@ export function StealthStudioVault() {
   useEffect(() => {
     async function verifyAuth() {
       try {
+        const token =
+          typeof window !== "undefined"
+            ? sessionStorage.getItem("zeewrites_admin_token")
+            : null;
+        const headers: Record<string, string> = {
+          "Content-Type": "application/json",
+        };
+        if (token) headers["Authorization"] = `Bearer ${token}`;
+
         const res = await fetch("/api/cms", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers,
+          credentials: "include",
           body: JSON.stringify({ action: "check_auth" }),
         });
         const data = await res.json();
@@ -241,6 +251,7 @@ export function StealthStudioVault() {
       const res = await fetch("/api/cms", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({
           action: "login",
           passphrase: passphraseInput.trim(),
@@ -256,6 +267,10 @@ export function StealthStudioVault() {
         return;
       }
 
+      if (data.token && typeof window !== "undefined") {
+        sessionStorage.setItem("zeewrites_admin_token", data.token);
+      }
+
       setIsAuthenticated(true);
       setPassphraseInput("");
       setPinInput("");
@@ -268,13 +283,26 @@ export function StealthStudioVault() {
 
   const handleLockVault = async () => {
     try {
+      const token =
+        typeof window !== "undefined"
+          ? sessionStorage.getItem("zeewrites_admin_token")
+          : null;
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
       await fetch("/api/cms", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
+        credentials: "include",
         body: JSON.stringify({ action: "logout" }),
       });
     } catch {
       // ignore
+    }
+    if (typeof window !== "undefined") {
+      sessionStorage.removeItem("zeewrites_admin_token");
     }
     setIsAuthenticated(false);
     setPassphraseInput("");
@@ -539,7 +567,11 @@ export function StealthStudioVault() {
       helpfulNo: 2,
     };
 
-    await upsertArticle(articleObj);
+    const res = await upsertArticle(articleObj);
+    if (!res.ok) {
+      showToast(`Publish failed: ${res.error || "Database error"}`);
+      return;
+    }
     setEditingId(articleObj.id);
     setStatus(targetStatus);
     showToast(

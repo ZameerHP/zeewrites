@@ -11,6 +11,7 @@ import { CategoryArticlesGrid } from "@/components/category/CategoryArticlesGrid
 import { AdSlot } from "@/components/ui/AdSlot";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 interface CategoryPageProps {
   params: Promise<{ slug: string }>;

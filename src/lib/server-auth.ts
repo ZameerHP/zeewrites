@@ -73,9 +73,20 @@ export async function isAuthenticatedAdmin(req?: Request): Promise<boolean> {
       const token = authHeader.slice(7).trim();
       if (verifySessionToken(token)) return true;
     }
+
+    // 2. Direct Cookie header check
+    const rawCookie = req.headers.get("cookie");
+    if (rawCookie) {
+      const match = rawCookie.match(
+        new RegExp(`(?:^|;\\s*)${SESSION_COOKIE_NAME}=([^;]+)`)
+      );
+      if (match && match[1] && verifySessionToken(decodeURIComponent(match[1]))) {
+        return true;
+      }
+    }
   }
 
-  // 2. Check httpOnly Cookie
+  // 3. Next.js cookies() store
   try {
     const cookieStore = await cookies();
     const sessionCookie = cookieStore.get(SESSION_COOKIE_NAME);

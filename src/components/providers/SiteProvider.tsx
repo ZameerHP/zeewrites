@@ -177,12 +177,28 @@ export function SiteProvider({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [router, showToast]);
 
+  const getAuthHeaders = (): Record<string, string> => {
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (typeof window !== "undefined") {
+      const token = sessionStorage.getItem("zeewrites_admin_token");
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+    }
+    return headers;
+  };
+
   // Sync CMS Data with Server API (SINGLE SOURCE OF TRUTH)
   const refreshCmsData = useCallback(async () => {
     try {
+      const headers: Record<string, string> = { "Cache-Control": "no-cache" };
+      if (typeof window !== "undefined") {
+        const token = sessionStorage.getItem("zeewrites_admin_token");
+        if (token) headers["Authorization"] = `Bearer ${token}`;
+      }
+
       const res = await fetch("/api/cms", {
         cache: "no-store",
-        headers: { "Cache-Control": "no-cache" },
+        headers,
+        credentials: "include",
       });
       if (res.ok) {
         const data = await res.json();
@@ -212,7 +228,8 @@ export function SiteProvider({
       try {
         const res = await fetch("/api/cms", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: getAuthHeaders(),
+          credentials: "include",
           body: JSON.stringify({ action: "upsert_article", article }),
         });
 
@@ -247,7 +264,8 @@ export function SiteProvider({
       try {
         const res = await fetch("/api/cms", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: getAuthHeaders(),
+          credentials: "include",
           body: JSON.stringify({ action: "delete_article", id }),
         });
 
@@ -279,11 +297,9 @@ export function SiteProvider({
       try {
         const res = await fetch("/api/cms", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "update_settings",
-            settings: nextPartial,
-          }),
+          headers: getAuthHeaders(),
+          credentials: "include",
+          body: JSON.stringify({ action: "update_settings", settings: nextPartial }),
         });
 
         const data = await res.json();
