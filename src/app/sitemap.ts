@@ -2,6 +2,8 @@ import { MetadataRoute } from "next";
 import { getDatabase } from "@/lib/server-store";
 import { CATEGORY_LIST } from "@/data/categories";
 
+export const dynamic = "force-dynamic";
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const { articles, settings } = await getDatabase();
   const baseUrl = settings.siteUrl.replace(/\/$/, "");

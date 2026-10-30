@@ -11,7 +11,6 @@ import React, {
 import { usePathname, useRouter } from "next/navigation";
 import Lenis from "lenis";
 import { Article, SiteSettings } from "@/types";
-import { SEED_ARTICLES } from "@/data/articles";
 import { DEFAULT_SITE_SETTINGS } from "@/data/categories";
 
 interface SiteContextValue {
@@ -19,15 +18,11 @@ interface SiteContextValue {
   toggleTheme: () => void;
   articles: Article[];
   settings: SiteSettings;
+  isAdminAuthenticated: boolean;
   refreshCmsData: () => Promise<void>;
-  upsertArticle: (article: Article) => Promise<boolean>;
-  deleteArticle: (id: string) => Promise<boolean>;
-  updateSettings: (next: Partial<SiteSettings>) => Promise<boolean>;
-  importFullBackup: (backup: {
-    articles: Article[];
-    settings: SiteSettings;
-  }) => Promise<boolean>;
-  resetToSeed: () => Promise<boolean>;
+  upsertArticle: (article: Article) => Promise<{ ok: boolean; error?: string }>;
+  deleteArticle: (id: string) => Promise<{ ok: boolean; error?: string }>;
+  updateSettings: (next: Partial<SiteSettings>) => Promise<{ ok: boolean; error?: string }>;
   isCommandOpen: boolean;
   setCommandOpen: (open: boolean) => void;
   isModalLocked: boolean;
@@ -38,9 +33,6 @@ interface SiteContextValue {
 }
 
 const SiteContext = createContext<SiteContextValue | undefined>(undefined);
-
-const LOCAL_STORAGE_CMS_KEY = "zeewrites_cms_backup_v2";
-const LOCAL_STORAGE_THEME_KEY = "zeewrites_theme_v1";
 
 export function SiteProvider({
   children,
@@ -54,6 +46,7 @@ export function SiteProvider({
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [articles, setArticles] = useState<Article[]>(initialArticles);
   const [settings, setSettings] = useState<SiteSettings>(initialSettings);
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(false);
   const [isCommandOpen, setCommandOpen] = useState(false);
   const [isModalLocked, setModalLocked] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -73,9 +66,10 @@ export function SiteProvider({
     return () => clearTimeout(timer);
   }, [toastMessage]);
 
-  // Initialize theme in Light Mode (#f8fbff / #ffffff solid surfaces)
+  // Clean up legacy localStorage keys that previously caused resurrection/stale state
   useEffect(() => {
     try {
+      localStorage.removeItem("zeewrites_cms_backup_v2");
       localStorage.removeItem("zeewrites_theme_v3");
       localStorage.removeItem("zeewrites_theme_v1");
     } catch {
@@ -93,15 +87,13 @@ export function SiteProvider({
     });
   }, []);
 
-  // Initialize Lenis Smooth Scroll with refined editorial inertia
+  // Initialize Lenis Smooth Scroll
   useEffect(() => {
     const prefersReducedMotion = window.matchMedia(
       "(prefers-reduced-motion: reduce)"
     ).matches;
 
-    if (prefersReducedMotion) {
-      return;
-    }
+    if (prefersReducedMotion) return;
 
     const lenis = new Lenis({
       lerp: 0.072,
@@ -117,7 +109,6 @@ export function SiteProvider({
       lenis.raf(time);
       rafRef.current = requestAnimationFrame(raf);
     }
-
     rafRef.current = requestAnimationFrame(raf);
 
     return () => {
@@ -127,7 +118,7 @@ export function SiteProvider({
     };
   }, []);
 
-  // Pause Lenis when modal command palette is open
+  // Pause Lenis when modal is open
   useEffect(() => {
     const lenis = lenisRef.current;
     if (!lenis) return;
@@ -139,7 +130,6 @@ export function SiteProvider({
     }
   }, [isCommandOpen, isModalLocked]);
 
-  // Smooth reset & recalculate height on route navigation
   useEffect(() => {
     if (lenisRef.current) {
       lenisRef.current.scrollTo(0, { immediate: true });
@@ -163,8 +153,6 @@ export function SiteProvider({
   }, []);
 
   // Global keyboard shortcuts:
-  // 1) Cmd/Ctrl + K -> Open Instant Command Palette Search
-  // 2) Ctrl/Cmd + Shift + Alt + Z -> Stealth Admin Vault Trigger
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
@@ -189,29 +177,21 @@ export function SiteProvider({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [router, showToast]);
 
-  // Sync CMS Data with API + LocalStorage fallback
+  // Sync CMS Data with Server API (SINGLE SOURCE OF TRUTH)
   const refreshCmsData = useCallback(async () => {
     try {
-      const res = await fetch("/api/cms", { cache: "no-store" });
+      const res = await fetch("/api/cms", {
+        cache: "no-store",
+        headers: { "Cache-Control": "no-cache" },
+      });
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data.articles)) setArticles(data.articles);
         if (data.settings) setSettings(data.settings);
-        localStorage.setItem(LOCAL_STORAGE_CMS_KEY, JSON.stringify(data));
-        return;
+        setIsAdminAuthenticated(Boolean(data.authenticated));
       }
-    } catch {
-      // Fallback to localStorage if offline
-      try {
-        const localRaw = localStorage.getItem(LOCAL_STORAGE_CMS_KEY);
-        if (localRaw) {
-          const parsed = JSON.parse(localRaw);
-          if (Array.isArray(parsed.articles)) setArticles(parsed.articles);
-          if (parsed.settings) setSettings(parsed.settings);
-        }
-      } catch {
-        // ignore
-      }
+    } catch (err) {
+      console.warn("Could not fetch /api/cms:", err);
     }
   }, []);
 
@@ -219,102 +199,83 @@ export function SiteProvider({
     refreshCmsData();
   }, [refreshCmsData]);
 
+  // Keep articles in sync when navigating to/from admin
   useEffect(() => {
     if (pathname?.startsWith("/zee-studio-vault")) {
       refreshCmsData();
     }
   }, [pathname, refreshCmsData]);
 
+  // Upsert Article: Waits for verified server response
   const upsertArticle = useCallback(
-    async (article: Article): Promise<boolean> => {
-      // 1. Optimistic update
-      setArticles((prev) => {
-        const idx = prev.findIndex(
-          (a) => a.id === article.id || a.slug === article.slug
-        );
-        const next =
-          idx >= 0
-            ? prev.map((item, i) => (i === idx ? article : item))
-            : [article, ...prev];
-        try {
-          localStorage.setItem(
-            LOCAL_STORAGE_CMS_KEY,
-            JSON.stringify({ articles: next, settings })
-          );
-        } catch {
-          // ignore
-        }
-        return next;
-      });
-
-      // 2. Persist to API
+    async (article: Article): Promise<{ ok: boolean; error?: string }> => {
       try {
         const res = await fetch("/api/cms", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ action: "upsert_article", article }),
         });
-        if (res.ok) {
-          const { db } = await res.json();
-          if (Array.isArray(db?.articles)) {
-            setArticles(db.articles);
-            localStorage.setItem(LOCAL_STORAGE_CMS_KEY, JSON.stringify(db));
-          }
-          router.refresh();
-          return true;
+
+        const data = await res.json();
+        if (!res.ok || !data.ok) {
+          const err = data.error || `Server returned ${res.status}`;
+          return { ok: false, error: err };
         }
+
+        if (Array.isArray(data.db?.articles)) {
+          setArticles(data.db.articles);
+        }
+        router.refresh();
+        return { ok: true };
       } catch (err) {
-        console.error("upsertArticle network error:", err);
+        const msg = err instanceof Error ? err.message : "Network error";
+        return { ok: false, error: msg };
       }
-      router.refresh();
-      return true;
     },
-    [settings, router]
+    [router]
   );
 
+  // Delete Article: Waits for verified server deletion; rollback on failure
   const deleteArticle = useCallback(
-    async (id: string): Promise<boolean> => {
-      // 1. Optimistic update
-      setArticles((prev) => {
-        const next = prev.filter((a) => a.id !== id && a.slug !== id);
-        try {
-          localStorage.setItem(
-            LOCAL_STORAGE_CMS_KEY,
-            JSON.stringify({ articles: next, settings })
-          );
-        } catch {
-          // ignore
-        }
-        return next;
-      });
+    async (id: string): Promise<{ ok: boolean; error?: string }> => {
+      // Keep previous copy in case of rollback
+      const previousArticles = articles;
 
-      // 2. Persist deletion to API
+      // Optimistic update
+      setArticles((prev) => prev.filter((a) => a.id !== id && a.slug !== id));
+
       try {
         const res = await fetch("/api/cms", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ action: "delete_article", id }),
         });
-        if (res.ok) {
-          const { db } = await res.json();
-          if (Array.isArray(db?.articles)) {
-            setArticles(db.articles);
-            localStorage.setItem(LOCAL_STORAGE_CMS_KEY, JSON.stringify(db));
-          }
-          router.refresh();
-          return true;
+
+        const data = await res.json();
+        if (!res.ok || !data.ok) {
+          // Rollback on failure
+          setArticles(previousArticles);
+          const err = data.error || `Server returned ${res.status}`;
+          return { ok: false, error: err };
         }
+
+        if (Array.isArray(data.db?.articles)) {
+          setArticles(data.db.articles);
+        }
+        router.refresh();
+        return { ok: true };
       } catch (err) {
-        console.error("deleteArticle network error:", err);
+        // Rollback on network failure
+        setArticles(previousArticles);
+        const msg = err instanceof Error ? err.message : "Network failure";
+        return { ok: false, error: msg };
       }
-      router.refresh();
-      return true;
     },
-    [settings, router]
+    [articles, router]
   );
 
   const updateSettings = useCallback(
-    async (nextPartial: Partial<SiteSettings>): Promise<boolean> => {
+    async (nextPartial: Partial<SiteSettings>): Promise<{ ok: boolean; error?: string }> => {
       try {
         const res = await fetch("/api/cms", {
           method: "POST",
@@ -324,85 +285,23 @@ export function SiteProvider({
             settings: nextPartial,
           }),
         });
-        if (res.ok) {
-          const { db } = await res.json();
-          setSettings(db.settings);
-          localStorage.setItem(LOCAL_STORAGE_CMS_KEY, JSON.stringify(db));
-          return true;
-        }
-      } catch {
-        // fallback
-      }
-      setSettings((prev) => {
-        const merged = {
-          ...prev,
-          ...nextPartial,
-          updatedAt: new Date().toISOString(),
-        };
-        try {
-          localStorage.setItem(
-            LOCAL_STORAGE_CMS_KEY,
-            JSON.stringify({ articles, settings: merged })
-          );
-        } catch {
-          // ignore
-        }
-        return merged;
-      });
-      return true;
-    },
-    [articles]
-  );
 
-  const importFullBackup = useCallback(
-    async (backup: {
-      articles: Article[];
-      settings: SiteSettings;
-    }): Promise<boolean> => {
-      try {
-        const res = await fetch("/api/cms", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "import_backup", backup }),
-        });
-        if (res.ok) {
-          const { db } = await res.json();
-          setArticles(db.articles);
-          setSettings(db.settings);
-          localStorage.setItem(LOCAL_STORAGE_CMS_KEY, JSON.stringify(db));
-          return true;
+        const data = await res.json();
+        if (!res.ok || !data.ok) {
+          return { ok: false, error: data.error || "Failed to update settings" };
         }
-      } catch {
-        // fallback
-      }
-      if (Array.isArray(backup.articles)) setArticles(backup.articles);
-      if (backup.settings) setSettings(backup.settings);
-      return true;
-    },
-    []
-  );
 
-  const resetToSeed = useCallback(async (): Promise<boolean> => {
-    try {
-      const res = await fetch("/api/cms", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "reset_seed" }),
-      });
-      if (res.ok) {
-        const { db } = await res.json();
-        setArticles(db.articles);
-        setSettings(db.settings);
-        localStorage.setItem(LOCAL_STORAGE_CMS_KEY, JSON.stringify(db));
-        return true;
+        if (data.db?.settings) {
+          setSettings(data.db.settings);
+        }
+        router.refresh();
+        return { ok: true };
+      } catch (err) {
+        return { ok: false, error: err instanceof Error ? err.message : "Network error" };
       }
-    } catch {
-      // fallback
-    }
-    setArticles(SEED_ARTICLES);
-    setSettings(DEFAULT_SITE_SETTINGS);
-    return true;
-  }, []);
+    },
+    [router]
+  );
 
   return (
     <SiteContext.Provider
@@ -411,12 +310,11 @@ export function SiteProvider({
         toggleTheme,
         articles,
         settings,
+        isAdminAuthenticated,
         refreshCmsData,
         upsertArticle,
         deleteArticle,
         updateSettings,
-        importFullBackup,
-        resetToSeed,
         isCommandOpen,
         setCommandOpen,
         isModalLocked,

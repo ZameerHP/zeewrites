@@ -1,8 +1,10 @@
 import { MetadataRoute } from "next";
-import { readDatabase } from "@/lib/server-store";
+import { getDatabase } from "@/lib/server-store";
 
-export default function robots(): MetadataRoute.Robots {
-  const { settings } = readDatabase();
+export const dynamic = "force-dynamic";
+
+export default async function robots(): Promise<MetadataRoute.Robots> {
+  const { settings } = await getDatabase();
   const baseUrl = settings.siteUrl.replace(/\/$/, "");
 
   return {

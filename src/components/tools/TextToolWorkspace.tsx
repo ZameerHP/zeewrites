@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useMemo, useState } from "react";
 import {
@@ -731,12 +731,12 @@ function InvisibleCharFixerTool() {
     }
 
     const xrayAnnotated = rawInput
-      .replace(/\u200B/g, "âŸ¦ZWSP U+200BâŸ§")
-      .replace(/\u200C/g, "âŸ¦ZWNJ U+200CâŸ§")
-      .replace(/\u200D/g, "âŸ¦ZWJ U+200DâŸ§")
-      .replace(/\uFEFF/g, "âŸ¦BOM U+FEFFâŸ§")
-      .replace(/\u00AD/g, "âŸ¦SHY U+00ADâŸ§")
-      .replace(/\u00A0/g, "âŸ¦NBSP U+00A0âŸ§");
+      .replace(/\u200B/g, "⟦ZWSP U+200B⟧")
+      .replace(/\u200C/g, "⟦ZWNJ U+200C⟧")
+      .replace(/\u200D/g, "⟦ZWJ U+200D⟧")
+      .replace(/\uFEFF/g, "⟦BOM U+FEFF⟧")
+      .replace(/\u00AD/g, "⟦SHY U+00AD⟧")
+      .replace(/\u00A0/g, "⟦NBSP U+00A0⟧");
 
     return {
       cleaned: text.normalize("NFC"),
@@ -802,7 +802,7 @@ function InvisibleCharFixerTool() {
             onChange={(e) => setFixMojibake(e.target.checked)}
             className="accent-navy"
           />
-          <span>Repair UTF-8 Mojibake (Ã¢â‚¬â„¢ â†’ â€™, ÃƒÂ© â†’ Ã©)</span>
+          <span>Repair UTF-8 Mojibake (â€™ → ’, Ã© → é)</span>
         </label>
         <label className="flex items-center gap-1.5 cursor-pointer font-medium">
           <input
@@ -1037,8 +1037,8 @@ function DuplicateLineScrubberTool() {
             className="w-full rounded-xl border border-obsidian/[0.12] dark:border-white/[0.12] bg-alabaster dark:bg-carbon px-3 py-2 text-obsidian dark:text-pearl"
           >
             <option value="none">Preserve Original Order</option>
-            <option value="az">Alphabetical (A â†’ Z)</option>
-            <option value="za">Reverse Alphabetical (Z â†’ A)</option>
+            <option value="az">Alphabetical (A → Z)</option>
+            <option value="za">Reverse Alphabetical (Z → A)</option>
             <option value="numeric">Natural Numerical (1, 2, 10)</option>
             <option value="length">Line Length (Shortest First)</option>
           </select>
@@ -1155,7 +1155,7 @@ function DuplicateLineScrubberTool() {
         <div className="space-y-2">
           <div className="flex items-center justify-between text-sm">
             <span className="font-semibold text-obsidian dark:text-pearl">
-              Cleaned list ({result.uniqueCount} unique â€¢{" "}
+              Cleaned list ({result.uniqueCount} unique •{" "}
               {result.duplicatesRemoved} duplicates removed)
             </span>
             <button
@@ -1334,7 +1334,7 @@ function MarkdownHtmlConverterTool() {
                 : "bg-obsidian/[0.05] dark:bg-white/[0.06] text-charcoal dark:text-cool-slate"
             }`}
           >
-            Markdown â†’ Clean HTML5
+            Markdown → Clean HTML5
           </button>
           <button
             type="button"
@@ -1625,7 +1625,7 @@ function JsonTextDiffValidatorTool() {
                 onChange={(e) => setSortKeys(e.target.checked)}
                 className="accent-navy"
               />
-              <span>Sort Keys Aâ€“Z</span>
+              <span>Sort Keys A–Z</span>
             </label>
           </div>
         )}
@@ -1637,7 +1637,7 @@ function JsonTextDiffValidatorTool() {
           {jsonValidation.valid ? (
             <div className="rounded-xl border border-emerald-signal/30 bg-emerald-signal/10 px-4 py-2.5 flex flex-wrap items-center justify-between gap-2 text-[13px]">
               <span className="inline-flex items-center gap-2 font-mono font-semibold text-emerald-700 dark:text-emerald-300">
-                Valid RFC 8259 JSON â€¢ Minify saves {jsonValidation.savedBytes} bytes
+                Valid RFC 8259 JSON • Minify saves {jsonValidation.savedBytes} bytes
               </span>
               <div className="flex items-center gap-2">
                 <button
@@ -1731,7 +1731,7 @@ function JsonTextDiffValidatorTool() {
                   +{diffLines.filter((d) => d.type === "added").length} Added
                 </span>
                 <span className="text-red-600 dark:text-red-400">
-                  âˆ’{diffLines.filter((d) => d.type === "removed").length} Removed
+                  −{diffLines.filter((d) => d.type === "removed").length} Removed
                 </span>
               </div>
             </div>
@@ -1757,7 +1757,7 @@ function JsonTextDiffValidatorTool() {
                     {line.type === "added"
                       ? "+"
                       : line.type === "removed"
-                      ? "âˆ’"
+                      ? "−"
                       : " "}
                   </span>
                   <span className="whitespace-pre-wrap break-all">

@@ -24,6 +24,7 @@ import {
 import { CATEGORIES, CATEGORY_LIST, DEFAULT_AUTHOR } from "@/data/categories";
 import { useSite } from "@/components/providers/SiteProvider";
 import { TechnicalDiagram } from "@/components/ui/TechnicalDiagram";
+import { DeleteConfirmModal } from "@/components/ui/DeleteConfirmModal";
 
 /* --------------------------------------------------------------------------
  * Helpers
@@ -283,6 +284,10 @@ export function SimpleAdminPanel({ onLock, onOpenAdvanced }: SimpleAdminPanelPro
   const [view, setView] = useState<View>("list");
   const [listFilter, setListFilter] = useState<"all" | CategorySlug>("all");
   const [listQuery, setListQuery] = useState("");
+
+  // Modal deletion state
+  const [deleteTarget, setDeleteTarget] = useState<Article | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Ensure scroll is free and not locked
   useEffect(() => {
@@ -572,18 +577,37 @@ export function SimpleAdminPanel({ onLock, onOpenAdvanced }: SimpleAdminPanelPro
       helpfulNo: editing?.helpfulNo ?? 0,
     };
 
-    await upsertArticle(article);
+    const result = await upsertArticle(article);
     setSaving(false);
+    if (!result.ok) {
+      showToast(`Save failed: ${result.error || "Database error"}`);
+      return;
+    }
+
     setEditing(article);
     setCustomSlug(article.slug);
     showToast(status === "published" ? "Published! Your post is live." : "Saved as draft.");
   };
 
-  const handleDelete = async (a: Article) => {
-    if (!window.confirm(`Delete "${a.title}"? This cannot be undone.`)) return;
-    await deleteArticle(a.id);
+  const requestDelete = (a: Article) => {
+    setDeleteTarget(a);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setIsDeleting(true);
+    const target = deleteTarget;
+    const res = await deleteArticle(target.id);
+    setIsDeleting(false);
+    setDeleteTarget(null);
+
+    if (!res.ok) {
+      showToast(`Delete failed: ${res.error || "Database error"}`);
+      return;
+    }
+
     showToast("Post deleted.");
-    if (editing?.id === a.id) {
+    if (editing?.id === target.id) {
       resetEditor();
       setView("list");
     }
@@ -767,7 +791,7 @@ export function SimpleAdminPanel({ onLock, onOpenAdvanced }: SimpleAdminPanelPro
                       )}
                       <button
                         type="button"
-                        onClick={() => handleDelete(a)}
+                        onClick={() => requestDelete(a)}
                         aria-label={`Delete ${a.title}`}
                         className="inline-flex items-center justify-center w-9 h-9 rounded-full border border-hairline text-muted hover:text-red-600 hover:border-red-300"
                       >
@@ -1175,7 +1199,7 @@ export function SimpleAdminPanel({ onLock, onOpenAdvanced }: SimpleAdminPanelPro
             {editing && (
               <button
                 type="button"
-                onClick={() => handleDelete(editing)}
+                onClick={() => requestDelete(editing)}
                 className="w-full inline-flex items-center justify-center gap-1.5 min-h-[40px] rounded-full border border-hairline text-[13px] text-muted hover:text-red-600 hover:border-red-300"
               >
                 <Trash2 className="w-3.5 h-3.5" /> Delete this post
@@ -1184,6 +1208,15 @@ export function SimpleAdminPanel({ onLock, onOpenAdvanced }: SimpleAdminPanelPro
           </aside>
         </div>
       )}
+
+      {/* Styled Delete Confirm Modal */}
+      <DeleteConfirmModal
+        isOpen={Boolean(deleteTarget)}
+        title={deleteTarget?.title || ""}
+        isDeleting={isDeleting}
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   );
 }

@@ -34,27 +34,7 @@ import { DEFAULT_AUTHOR, CATEGORY_LIST } from "@/data/categories";
 import { useSite } from "@/components/providers/SiteProvider";
 import { TechnicalDiagram } from "@/components/ui/TechnicalDiagram";
 import { SimpleAdminPanel } from "@/components/admin/SimpleAdminPanel";
-
-const DEFAULT_PASSPHRASE = "zeewrites-master-vault";
-const DEFAULT_PIN = "202600";
-const SESSION_KEY = "zeewrites_vault_session_v1";
-const LOCKOUT_KEY = "zeewrites_vault_lockout_v1";
-
-async function sha256Hex(input: string): Promise<string> {
-  if (typeof window !== "undefined" && window.crypto?.subtle) {
-    const buf = new TextEncoder().encode(input);
-    const hashBuffer = await window.crypto.subtle.digest("SHA-256", buf);
-    return Array.from(new Uint8Array(hashBuffer))
-      .map((b) => b.toString(16).padStart(2, "0"))
-      .join("");
-  }
-  // Fallback deterministic hash if crypto.subtle unavailable
-  let h = 0;
-  for (let i = 0; i < input.length; i++) {
-    h = (Math.imul(31, h) + input.charCodeAt(i)) | 0;
-  }
-  return String(h);
-}
+import { DeleteConfirmModal } from "@/components/ui/DeleteConfirmModal";
 
 export function StealthStudioVault() {
   const {
@@ -63,8 +43,6 @@ export function StealthStudioVault() {
     upsertArticle,
     deleteArticle,
     updateSettings,
-    importFullBackup,
-    resetToSeed,
     showToast,
   } = useSite();
 
@@ -130,7 +108,7 @@ export function StealthStudioVault() {
 
   // Verified Takeaway State
   const [symptom, setSymptom] = useState(
-    "Browsers stall on 'Resolving host...' or 'Establishing secure connection...' for 400msâ€“2,000ms on first visit."
+    "Browsers stall on 'Resolving host...' or 'Establishing secure connection...' for 400ms–2,000ms on first visit."
   );
   const [rootCause, setRootCause] = useState(
     "Slow ISP recursive DNS resolvers lacking EDNS Client Subnet support and disabled TLS 1.3 0-RTT session tickets."
@@ -224,83 +202,77 @@ export function StealthStudioVault() {
     setCookieEnabled(settings.cookieBannerEnabled);
   }, [settings]);
 
-  // Restore session / check lockout on mount
+  // Modal deletion state
+  const [deleteTarget, setDeleteTarget] = useState<Article | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+
+  // Check server authentication on mount
   useEffect(() => {
-    try {
-      const lockRaw = localStorage.getItem(LOCKOUT_KEY);
-      if (lockRaw) {
-        const until = Number(lockRaw);
-        if (until > Date.now()) {
-          setLockoutUntil(until);
-        } else {
-          localStorage.removeItem(LOCKOUT_KEY);
-        }
-      }
-      const sessionRaw = sessionStorage.getItem(SESSION_KEY);
-      if (sessionRaw) {
-        const parsed = JSON.parse(sessionRaw);
-        if (parsed.expiresAt > Date.now()) {
+    async function verifyAuth() {
+      try {
+        const res = await fetch("/api/cms", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "check_auth" }),
+        });
+        const data = await res.json();
+        if (data.authenticated) {
           setIsAuthenticated(true);
         }
+      } catch {
+        // ignore
       }
-    } catch {
-      // ignore
     }
+    verifyAuth();
   }, []);
 
   const handleUnlock = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError(null);
 
-    if (lockoutUntil && lockoutUntil > Date.now()) {
-      const secs = Math.ceil((lockoutUntil - Date.now()) / 1000);
-      setAuthError(`Rate-limit lockout active. Try again in ${secs}s.`);
+    if (!passphraseInput.trim() || !pinInput.trim()) {
+      setAuthError("Passphrase and 6-digit PIN are required.");
       return;
     }
 
-    const expectedHash = await sha256Hex(`${DEFAULT_PASSPHRASE}:${DEFAULT_PIN}`);
-    const inputHash = await sha256Hex(
-      `${passphraseInput.trim()}:${pinInput.trim()}`
-    );
+    setIsLoggingIn(true);
+    try {
+      const res = await fetch("/api/cms", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "login",
+          passphrase: passphraseInput.trim(),
+          pin: pinInput.trim(),
+        }),
+      });
 
-    if (inputHash === expectedHash) {
+      const data = await res.json();
+      setIsLoggingIn(false);
+
+      if (!res.ok || !data.ok) {
+        setAuthError(data.error || "Authentication failed.");
+        return;
+      }
+
       setIsAuthenticated(true);
-      setFailedAttempts(0);
-      const token = {
-        hash: inputHash.slice(0, 24),
-        expiresAt: Date.now() + 1000 * 60 * 60 * 2, // 2-hour auto-lock timeout
-      };
-      try {
-        sessionStorage.setItem(SESSION_KEY, JSON.stringify(token));
-      } catch {
-        // ignore
-      }
+      setPassphraseInput("");
+      setPinInput("");
       showToast("Stealth Editorial Studio Unlocked.");
-    } else {
-      const nextFails = failedAttempts + 1;
-      setFailedAttempts(nextFails);
-      if (nextFails >= 5) {
-        const until = Date.now() + 60 * 1000; // 60s lockout after 5 failed attempts
-        setLockoutUntil(until);
-        try {
-          localStorage.setItem(LOCKOUT_KEY, String(until));
-        } catch {
-          // ignore
-        }
-        setAuthError(
-          "5 failed attempts detected. Vault locked for 60 seconds."
-        );
-      } else {
-        setAuthError(
-          `Invalid passphrase or PIN (${5 - nextFails} attempts remaining).`
-        );
-      }
+    } catch {
+      setIsLoggingIn(false);
+      setAuthError("Network error. Please try again.");
     }
   };
 
-  const handleLockVault = () => {
+  const handleLockVault = async () => {
     try {
-      sessionStorage.removeItem(SESSION_KEY);
+      await fetch("/api/cms", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "logout" }),
+      });
     } catch {
       // ignore
     }
@@ -340,7 +312,7 @@ export function StealthStudioVault() {
         setCoverWidth(targetW);
         setCoverHeight(targetH);
         setCompressionStats(
-          `Converted to WebP (${targetW}Ã—${targetH}px) â€¢ ${originalKb} KB â†’ ${compressedKb} KB`
+          `Converted to WebP (${targetW}×${targetH}px) • ${originalKb} KB → ${compressedKb} KB`
         );
         showToast("Image optimized to WebP via HTML5 Canvas!");
       };
@@ -645,73 +617,29 @@ export function StealthStudioVault() {
                 required
                 value={pinInput}
                 onChange={(e) => setPinInput(e.target.value)}
-                placeholder="â€¢â€¢â€¢â€¢â€¢â€¢"
+                placeholder="••••••"
                 className="w-full rounded-xl border border-obsidian/[0.15] dark:border-white/[0.15] bg-alabaster dark:bg-carbon px-3.5 py-2.5 text-sm font-mono tracking-[0.3em] text-obsidian dark:text-pearl focus:outline-none focus:border-navy"
               />
             </div>
 
             <button
               type="submit"
-              className="w-full py-3 rounded-xl bg-navy hover:bg-navy/90 text-white font-display font-semibold text-sm flex items-center justify-center gap-2 shadow-sm transition-all"
+              disabled={isLoggingIn}
+              className="w-full py-3 rounded-xl bg-navy hover:bg-navy/90 text-white font-display font-semibold text-sm flex items-center justify-center gap-2 shadow-sm transition-all disabled:opacity-60"
             >
-              <Unlock className="w-4 h-4" />
-              <span>Verify &amp; Unlock Studio</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setPassphraseInput(DEFAULT_PASSPHRASE);
-                setPinInput(DEFAULT_PIN);
-                setIsAuthenticated(true);
-                showToast("Admin Panel Unlocked");
-              }}
-              className="w-full py-2.5 rounded-xl border border-[#4a74f0] bg-[#4a74f0]/10 hover:bg-[#4a74f0]/20 text-[#2a4fc4] font-sans font-semibold text-sm flex items-center justify-center gap-2 transition-all"
-            >
-              <span>⚡ 1-Click Quick Unlock (Owner)</span>
+              {isLoggingIn ? (
+                <>
+                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span>Verifying...</span>
+                </>
+              ) : (
+                <>
+                  <Unlock className="w-4 h-4" />
+                  <span>Verify &amp; Unlock Studio</span>
+                </>
+              )}
             </button>
           </form>
-
-          {/* Quick Owner Verification Helper for First-Time Evaluators */}
-          <div className="pt-3 border-t border-obsidian/[0.08] dark:border-white/[0.08]">
-            <button
-              type="button"
-              onClick={() => setShowOwnerHint((prev) => !prev)}
-              className="w-full flex items-center justify-between text-[13px] font-mono text-charcoal dark:text-cool-slate hover:text-obsidian dark:hover:text-pearl"
-            >
-              <span className="flex items-center gap-1.5">
-                <KeyRound className="w-3.5 h-3.5 text-navy" />
-                <span>Default Owner Credentials (Click to Autofill)</span>
-              </span>
-              <span>{showOwnerHint ? "Hide" : "Reveal"}</span>
-            </button>
-            {showOwnerHint && (
-              <div className="mt-2.5 p-3 rounded-xl bg-obsidian/[0.04] dark:bg-white/[0.05] text-[13px] font-mono space-y-2">
-                <div>
-                  Passphrase:{" "}
-                  <strong className="text-navy dark:text-navy">
-                    {DEFAULT_PASSPHRASE}
-                  </strong>
-                </div>
-                <div>
-                  PIN:{" "}
-                  <strong className="text-navy dark:text-navy">
-                    {DEFAULT_PIN}
-                  </strong>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPassphraseInput(DEFAULT_PASSPHRASE);
-                    setPinInput(DEFAULT_PIN);
-                  }}
-                  className="w-full py-1.5 rounded-lg bg-obsidian dark:bg-pearl text-pearl dark:text-obsidian text-[13px] font-semibold"
-                >
-                  Autofill Owner Credentials
-                </button>
-              </div>
-            )}
-          </div>
         </div>
       </div>
     );
@@ -750,7 +678,7 @@ export function StealthStudioVault() {
               </span>
             </div>
             <p className="text-[13px] font-mono text-charcoal dark:text-cool-slate">
-              Zero Public Footprint â€¢ Isolated via robots.txt &amp; noindex â€¢{" "}
+              Zero Public Footprint • Isolated via robots.txt &amp; noindex •{" "}
               {articles.length} Total Articles in Store
             </p>
           </div>
@@ -1444,7 +1372,7 @@ export function StealthStudioVault() {
                       /{art.category}
                     </span>
                     <span className="text-[13px] font-mono text-charcoal dark:text-cool-slate">
-                      â€¢ {art.wordCount.toLocaleString()} words â€¢{" "}
+                      • {art.wordCount.toLocaleString()} words •{" "}
                       {art.readingTimeMinutes} min read
                     </span>
                   </div>
@@ -1472,10 +1400,7 @@ export function StealthStudioVault() {
                   </Link>
                   <button
                     type="button"
-                    onClick={async () => {
-                      await deleteArticle(art.id);
-                      showToast(`Deleted "${art.title.slice(0, 28)}..."`);
-                    }}
+                    onClick={() => setDeleteTarget(art)}
                     aria-label={`Delete ${art.title}`}
                     className="p-2 rounded-xl border border-red-500/20 text-red-500 hover:bg-red-500/10"
                   >
@@ -1523,7 +1448,7 @@ export function StealthStudioVault() {
                 className="w-full rounded-xl border border-obsidian/[0.12] dark:border-white/[0.12] bg-alabaster dark:bg-carbon px-3.5 py-2.5 text-sm font-mono text-obsidian dark:text-pearl"
               >
                 <option value="verification">
-                  Verification Mode (Default â€” Official Script + Clean Slots)
+                  Verification Mode (Default — Official Script + Clean Slots)
                 </option>
                 <option value="preview">
                   Preview Mode (Structural CLS Wireframe Placeholders)
@@ -1610,7 +1535,7 @@ export function StealthStudioVault() {
             </h2>
             <p className="text-[13px] text-charcoal dark:text-cool-slate">
               Export your entire Zee Writes article database, custom WebP media,
-              and AdSense configuration as a single portable JSON snapshotâ€”or
+              and AdSense configuration as a single portable JSON snapshot—or
               restore from a previous backup.
             </p>
           </div>
@@ -1670,8 +1595,17 @@ export function StealthStudioVault() {
                   reader.onload = async (ev) => {
                     try {
                       const parsed = JSON.parse(String(ev.target?.result));
-                      await importFullBackup(parsed);
-                      showToast("Full site backup restored successfully!");
+                      const res = await fetch("/api/cms", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ action: "import_backup", backup: parsed }),
+                      });
+                      if (res.ok) {
+                        showToast("Full site backup restored successfully!");
+                        window.location.reload();
+                      } else {
+                        showToast("Failed to restore backup.");
+                      }
                     } catch {
                       showToast("Invalid JSON backup file.");
                     }
@@ -1681,26 +1615,30 @@ export function StealthStudioVault() {
                 className="hidden"
               />
             </label>
-
-            <button
-              type="button"
-              onClick={async () => {
-                await resetToSeed();
-                showToast("Reset database to 10 original seed articles.");
-              }}
-              className="p-4 rounded-2xl border border-amber-500/30 bg-amber-500/[0.06] hover:bg-amber-500/10 text-left space-y-2 transition-all"
-            >
-              <RotateCcw className="w-5 h-5 text-amber-500" />
-              <div className="font-display font-bold text-sm text-obsidian dark:text-pearl">
-                Reset to Default Seed
-              </div>
-              <p className="text-[13px] text-charcoal dark:text-cool-slate">
-                Restores the 10 factory pillar articles &amp; settings.
-              </p>
-            </button>
           </div>
         </div>
       )}
+
+      {/* Styled Delete Confirm Modal */}
+      <DeleteConfirmModal
+        isOpen={Boolean(deleteTarget)}
+        title={deleteTarget?.title || ""}
+        isDeleting={isDeleting}
+        onConfirm={async () => {
+          if (!deleteTarget) return;
+          setIsDeleting(true);
+          const target = deleteTarget;
+          const res = await deleteArticle(target.id);
+          setIsDeleting(false);
+          setDeleteTarget(null);
+          if (!res.ok) {
+            showToast(`Delete failed: ${res.error || "Database error"}`);
+            return;
+          }
+          showToast(`Deleted "${target.title.slice(0, 28)}..."`);
+        }}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   );
 }

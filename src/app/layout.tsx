@@ -76,6 +76,7 @@ export default async function RootLayout({
   children: React.ReactNode;
 }) {
   const { articles, settings } = await getDatabase();
+  const publishedArticles = articles.filter((a) => a.status === "published");
 
   return (
     <html
@@ -87,7 +88,7 @@ export default async function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: LIGHT_MODE_INIT_SCRIPT }} />
       </head>
       <body className="font-sans antialiased bg-page text-ink">
-        <SiteProvider initialArticles={articles} initialSettings={settings}>
+        <SiteProvider initialArticles={publishedArticles} initialSettings={settings}>
           <div className="min-h-screen flex flex-col">
             <Header />
             <main id="main-content" className="flex-1">

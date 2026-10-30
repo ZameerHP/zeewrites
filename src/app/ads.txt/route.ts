@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
-import { readDatabase } from "@/lib/server-store";
+import { getDatabase } from "@/lib/server-store";
+
+export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const { settings } = readDatabase();
+  const { settings } = await getDatabase();
   const body =
     settings.adsTxtContent?.trim() ||
     (settings.publisherId
