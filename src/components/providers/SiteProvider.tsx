@@ -72,12 +72,36 @@ export function SiteProvider({
       localStorage.removeItem("zeewrites_cms_backup_v2");
       localStorage.removeItem("zeewrites_theme_v3");
       localStorage.removeItem("zeewrites_theme_v1");
+      localStorage.removeItem("zeewrites_local_db_v1");
+
+      if (articles.length === 0) {
+        const cached = localStorage.getItem("zeewrites_client_cache_v3");
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setArticles(parsed);
+          }
+        }
+      }
     } catch {
       // ignore
     }
     setTheme("light");
     document.documentElement.classList.remove("dark");
   }, []);
+
+  // Sync client-side versioned cache
+  useEffect(() => {
+    try {
+      if (articles.length > 0) {
+        localStorage.setItem("zeewrites_client_cache_v3", JSON.stringify(articles));
+      } else {
+        localStorage.removeItem("zeewrites_client_cache_v3");
+      }
+    } catch {
+      // ignore
+    }
+  }, [articles]);
 
   const toggleTheme = useCallback(() => {
     setTheme((prev) => {

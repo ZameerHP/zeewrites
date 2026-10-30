@@ -1,9 +1,9 @@
 import React from "react";
 import { Metadata } from "next";
-import { notFound } from "next/navigation";
 import { getDatabase } from "@/lib/server-store";
 import { generateArticleJsonLd } from "@/lib/schema";
 import { ArticleReaderView } from "@/components/article/ArticleReaderView";
+import { ArticleClientResolver } from "@/components/article/ArticleClientResolver";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -85,7 +85,7 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
   });
 
   if (!article) {
-    notFound();
+    return <ArticleClientResolver slug={slug} fallbackSettings={settings} />;
   }
 
   const jsonLd = generateArticleJsonLd(article, settings);
