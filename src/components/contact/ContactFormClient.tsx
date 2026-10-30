@@ -13,6 +13,7 @@ export function ContactFormClient() {
   const [selectedTopic, setSelectedTopic] = useState<string>("Question");
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
+  const [honeypot, setHoneypot] = useState("");
 
   const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
   const [statusText, setStatusText] = useState("");
@@ -63,7 +64,7 @@ export function ContactFormClient() {
     return Object.keys(errors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) {
       setStatus("error");
@@ -72,22 +73,42 @@ export function ContactFormClient() {
     }
 
     setStatus("submitting");
-    setStatusText("Preparing your message");
+    setStatusText("Sending your message to Zee...");
 
-    const finalSubject = subject.trim()
-      ? `${selectedTopic}: ${subject.trim()}`
-      : `${selectedTopic}: Message from ${name.trim() || "Zee Writes Reader"}`;
+    try {
+      const res = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: name.trim(),
+          email: email.trim(),
+          topic: selectedTopic,
+          subject: subject.trim(),
+          message: message.trim(),
+          hp_website: honeypot,
+        }),
+      });
 
-    const mailtoSubject = encodeURIComponent(finalSubject);
-    const mailtoBody = encodeURIComponent(
-      `Name: ${name.trim()}\nEmail: ${email.trim()}\nTopic: ${selectedTopic}\n\n${message.trim()}`
-    );
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        setStatus("error");
+        setStatusText(data.error || "Failed to send message. Please try again.");
+        return;
+      }
 
-    setStatus("success");
-    setStatusText(
-      "Opening your email client with your message addressed to zameerpanhwer67@gmail.com."
-    );
-    window.location.href = `mailto:zameerpanhwer67@gmail.com?subject=${mailtoSubject}&body=${mailtoBody}`;
+      setStatus("success");
+      setStatusText(
+        data.message || "Thank you! Your message has been sent directly to Zee."
+      );
+      showToast("Message sent successfully!");
+      setName("");
+      setEmail("");
+      setSubject("");
+      setMessage("");
+    } catch {
+      setStatus("error");
+      setStatusText("Network error. Please check your connection and try again.");
+    }
   };
 
   return (
@@ -242,6 +263,18 @@ export function ContactFormClient() {
                 <span className="text-[14px] font-medium text-muted">
                   Direct to Zee
                 </span>
+              </div>
+
+              {/* Anti-bot honeypot field (hidden from screen & readers) */}
+              <div className="hidden" aria-hidden="true">
+                <input
+                  type="text"
+                  name="hp_website"
+                  tabIndex={-1}
+                  autoComplete="off"
+                  value={honeypot}
+                  onChange={(e) => setHoneypot(e.target.value)}
+                />
               </div>
 
               {/* Name & Email Row */}
@@ -456,10 +489,11 @@ export function ContactFormClient() {
               <div className="flex flex-wrap items-center justify-between gap-4 pt-2">
                 <button
                   type="submit"
-                  className="inline-flex items-center justify-center gap-2.5 px-7 min-h-[44px] text-[15px] font-medium btn-primary-pill"
+                  disabled={status === "submitting"}
+                  className="inline-flex items-center justify-center gap-2.5 px-7 min-h-[44px] text-[15px] font-medium btn-primary-pill disabled:opacity-70 disabled:cursor-not-allowed"
                 >
-                  <span>Send Message</span>
-                  <Send className="w-4 h-4" strokeWidth={1.5} />
+                  <span>{status === "submitting" ? "Sending..." : "Send Message"}</span>
+                  <Send className={`w-4 h-4 ${status === "submitting" ? "animate-pulse" : ""}`} strokeWidth={1.5} />
                 </button>
 
                 <span className="text-[14px] text-muted">

@@ -39,6 +39,13 @@ function purgeAllPageCaches(slug?: string) {
   }
 }
 
+const SECURITY_HEADERS = {
+  "X-Content-Type-Options": "nosniff",
+  "X-Frame-Options": "DENY",
+  "Referrer-Policy": "strict-origin-when-cross-origin",
+  "Cache-Control": "no-store, max-age=0, must-revalidate",
+};
+
 /**
  * GET /api/cms:
  * Public read of live database (only published articles for public, all for authenticated admin)
@@ -61,15 +68,13 @@ export async function GET(req: NextRequest) {
         authenticated: isAuth,
       },
       {
-        headers: {
-          "Cache-Control": "no-store, max-age=0, must-revalidate",
-        },
+        headers: SECURITY_HEADERS,
       }
     );
   } catch (err) {
     return NextResponse.json(
-      { ok: false, error: err instanceof Error ? err.message : "Read error" },
-      { status: 500 }
+      { ok: false, error: "Database read error." },
+      { status: 500, headers: SECURITY_HEADERS }
     );
   }
 }
@@ -86,6 +91,34 @@ export async function GET(req: NextRequest) {
  */
 export async function POST(req: NextRequest) {
   try {
+    // 1. Payload size guard (max 5MB)
+    const contentLength = req.headers.get("content-length");
+    if (contentLength && parseInt(contentLength, 10) > 5 * 1024 * 1024) {
+      return NextResponse.json(
+        { ok: false, error: "Payload too large." },
+        { status: 413, headers: SECURITY_HEADERS }
+      );
+    }
+
+    // 2. CSRF / Origin validation for mutations
+    const origin = req.headers.get("origin");
+    const host = req.headers.get("host");
+    if (origin && host) {
+      const originHost = origin.replace(/^https?:\/\//, "").split(":")[0];
+      const targetHost = host.split(":")[0];
+      if (
+        originHost !== targetHost &&
+        originHost !== "localhost" &&
+        originHost !== "127.0.0.1" &&
+        !targetHost.endsWith(".vercel.app")
+      ) {
+        return NextResponse.json(
+          { ok: false, error: "Forbidden: Origin validation failed." },
+          { status: 403, headers: SECURITY_HEADERS }
+        );
+      }
+    }
+
     const ip =
       req.headers.get("x-forwarded-for")?.split(",")[0].trim() ||
       req.headers.get("x-real-ip") ||
@@ -103,7 +136,7 @@ export async function POST(req: NextRequest) {
             ok: false,
             error: `Too many failed attempts. Locked out for ${rateCheck.waitSeconds}s.`,
           },
-          { status: 429 }
+          { status: 429, headers: SECURITY_HEADERS }
         );
       }
 
@@ -111,7 +144,7 @@ export async function POST(req: NextRequest) {
         recordLoginAttempt(ip, false);
         return NextResponse.json(
           { ok: false, error: "Passphrase and 6-digit PIN are required." },
-          { status: 400 }
+          { status: 400, headers: SECURITY_HEADERS }
         );
       }
 
@@ -120,14 +153,17 @@ export async function POST(req: NextRequest) {
         recordLoginAttempt(ip, false);
         return NextResponse.json(
           { ok: false, error: "Invalid Passphrase or PIN." },
-          { status: 401 }
+          { status: 401, headers: SECURITY_HEADERS }
         );
       }
 
       recordLoginAttempt(ip, true);
       const token = createSessionToken();
 
-      const response = NextResponse.json({ ok: true, message: "Unlocked", token });
+      const response = NextResponse.json(
+        { ok: true, message: "Unlocked", token },
+        { headers: SECURITY_HEADERS }
+      );
       response.cookies.set({
         name: SESSION_COOKIE_NAME,
         value: token,
@@ -143,7 +179,10 @@ export async function POST(req: NextRequest) {
 
     // 2. LOGOUT ACTION
     if (body.action === "logout") {
-      const response = NextResponse.json({ ok: true, message: "Logged out" });
+      const response = NextResponse.json(
+        { ok: true, message: "Logged out" },
+        { headers: SECURITY_HEADERS }
+      );
       response.cookies.delete(SESSION_COOKIE_NAME);
       return response;
     }
@@ -151,7 +190,10 @@ export async function POST(req: NextRequest) {
     // 3. CHECK AUTH
     if (body.action === "check_auth") {
       const isAuth = await isAuthenticatedAdmin(req);
-      return NextResponse.json({ ok: true, authenticated: isAuth });
+      return NextResponse.json(
+        { ok: true, authenticated: isAuth },
+        { headers: SECURITY_HEADERS }
+      );
     }
 
     // All subsequent actions REQUIRE AUTHENTICATED ADMIN
@@ -159,7 +201,7 @@ export async function POST(req: NextRequest) {
     if (!isAuth) {
       return NextResponse.json(
         { ok: false, error: "Unauthorized: Admin session required." },
-        { status: 401 }
+        { status: 401, headers: SECURITY_HEADERS }
       );
     }
 
@@ -168,7 +210,7 @@ export async function POST(req: NextRequest) {
       const incoming = body.article as Article;
       const saved = await saveArticle(incoming);
       purgeAllPageCaches(incoming.slug);
-      return NextResponse.json({ ok: true, db: saved });
+      return NextResponse.json({ ok: true, db: saved }, { headers: SECURITY_HEADERS });
     }
 
     // 5. DELETE ARTICLE (VERIFIED)
@@ -187,29 +229,29 @@ export async function POST(req: NextRequest) {
       if (stillPresent) {
         return NextResponse.json(
           { ok: false, error: "Delete failed: Article still exists in database." },
-          { status: 500 }
+          { status: 500, headers: SECURITY_HEADERS }
         );
       }
 
-      return NextResponse.json({ ok: true, db: saved });
+      return NextResponse.json({ ok: true, db: saved }, { headers: SECURITY_HEADERS });
     }
 
     // 6. UPDATE SETTINGS
     if (body.action === "update_settings" && body.settings) {
       const saved = await saveSettings(body.settings as Partial<SiteSettings>);
       purgeAllPageCaches();
-      return NextResponse.json({ ok: true, db: saved });
+      return NextResponse.json({ ok: true, db: saved }, { headers: SECURITY_HEADERS });
     }
 
     return NextResponse.json(
       { ok: false, error: "Invalid action or missing parameters." },
-      { status: 400 }
+      { status: 400, headers: SECURITY_HEADERS }
     );
   } catch (err) {
     console.error("API CMS error:", err);
     return NextResponse.json(
-      { ok: false, error: err instanceof Error ? err.message : "Server error" },
-      { status: 500 }
+      { ok: false, error: "Server processing error." },
+      { status: 500, headers: SECURITY_HEADERS }
     );
   }
 }
