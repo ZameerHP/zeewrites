@@ -175,16 +175,32 @@ export function Header() {
 
   const centerNavLinks = useMemo(
     () => [
-      ...activeCategories.map((cat) => ({
-        href: `/category/${cat.slug}`,
-        label: cat.shortName,
-      })),
+      {
+        href: "/category/how-to-fixes",
+        label: "How-To Fixes",
+      },
+      {
+        href: "/category/text-guides",
+        label: "Text Guides",
+      },
+      {
+        href: "/category/solutions",
+        label: "Solutions",
+      },
+      {
+        href: "/category/tutorials",
+        label: "Tutorials",
+      },
+      {
+        href: "/tools",
+        label: "Tools",
+      },
       {
         href: "/about",
         label: "About",
       },
     ],
-    [activeCategories]
+    []
   );
 
   const isContactActive = pathname === "/contact";
@@ -212,10 +228,10 @@ export function Header() {
             </div>
           </Link>
 
-          {/* Center: How-To Fixes, Text Guides, Solutions, About */}
+          {/* Center: How-To Fixes, Text Guides, Solutions, Tutorials, Tools, About */}
           <nav
             aria-label="Primary navigation"
-            className="hidden lg:flex items-center gap-1"
+            className="hidden lg:flex items-center gap-1 xl:gap-1.5"
           >
             {centerNavLinks.map((item) => {
               const isActive =
@@ -225,7 +241,7 @@ export function Header() {
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`inline-flex items-center gap-2 px-4 py-2 min-h-[44px] rounded-full text-[15px] font-medium transition-colors duration-micro ease-out-expo ${
+                  className={`inline-flex items-center gap-1.5 px-3 xl:px-4 py-2 min-h-[44px] rounded-full text-[14px] xl:text-[15px] font-medium transition-colors duration-micro ease-out-expo ${
                     isActive
                       ? "bg-surface text-ink border border-hairline shadow-1"
                       : "text-secondary hover:text-ink hover:bg-surface"
