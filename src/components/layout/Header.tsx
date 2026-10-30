@@ -192,10 +192,6 @@ export function Header() {
         label: "Tutorials",
       },
       {
-        href: "/tools",
-        label: "Tools",
-      },
-      {
         href: "/about",
         label: "About",
       },
@@ -228,7 +224,7 @@ export function Header() {
             </div>
           </Link>
 
-          {/* Center: How-To Fixes, Text Guides, Solutions, Tutorials, Tools, About */}
+          {/* Center: How-To Fixes, Text Guides, Solutions, Tutorials, About */}
           <nav
             aria-label="Primary navigation"
             className="hidden lg:flex items-center gap-1 xl:gap-1.5"
