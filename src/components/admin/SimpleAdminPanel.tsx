@@ -6,6 +6,7 @@ import {
   Plus,
   Trash2,
   ArrowUpRight,
+  ArrowLeft,
   Upload,
   Lock,
   Pencil,
@@ -587,6 +588,7 @@ export function SimpleAdminPanel({ onLock, onOpenAdvanced }: SimpleAdminPanelPro
     setEditing(article);
     setCustomSlug(article.slug);
     showToast(status === "published" ? "Published! Your post is live." : "Saved as draft.");
+    setView("list");
   };
 
   const requestDelete = (a: Article) => {
@@ -648,7 +650,7 @@ export function SimpleAdminPanel({ onLock, onOpenAdvanced }: SimpleAdminPanelPro
                 : "bg-surface text-ink border-hairline hover:border-[#4a74f0]"
             }`}
           >
-            My Posts
+            My Posts ({articles.length})
           </button>
           <button
             type="button"
@@ -808,7 +810,16 @@ export function SimpleAdminPanel({ onLock, onOpenAdvanced }: SimpleAdminPanelPro
 
       {/* =========================== EDITOR VIEW =========================== */}
       {view === "editor" && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="space-y-4">
+          <button
+            type="button"
+            onClick={() => setView("list")}
+            className="inline-flex items-center gap-1.5 text-[14px] font-medium text-muted hover:text-ink transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>Back to My Posts ({articles.length})</span>
+          </button>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           <div className="lg:col-span-8 space-y-5">
             {/* 1. Basics */}
             <Card step={1} title="Title & category">
@@ -1206,6 +1217,7 @@ export function SimpleAdminPanel({ onLock, onOpenAdvanced }: SimpleAdminPanelPro
               </button>
             )}
           </aside>
+        </div>
         </div>
       )}
 

@@ -226,7 +226,20 @@ export function SiteProvider({
       });
       if (res.ok) {
         const data = await res.json();
-        if (Array.isArray(data.articles)) setArticles(data.articles);
+        if (Array.isArray(data.articles)) {
+          setArticles((prev) => {
+            if (data.articles.length > 0) {
+              const merged = [...data.articles];
+              for (const p of prev) {
+                if (!merged.some((a) => a.id === p.id || a.slug === p.slug)) {
+                  merged.push(p);
+                }
+              }
+              return merged;
+            }
+            return prev;
+          });
+        }
         if (data.settings) setSettings(data.settings);
         setIsAdminAuthenticated(Boolean(data.authenticated));
       }
