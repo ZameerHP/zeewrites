@@ -44,6 +44,7 @@ export function StealthStudioVault() {
     deleteArticle,
     updateSettings,
     showToast,
+    refreshCmsData,
   } = useSite();
 
   // Authentication & Rate-Limiting State
@@ -211,31 +212,23 @@ export function StealthStudioVault() {
   useEffect(() => {
     async function verifyAuth() {
       try {
-        const token =
-          typeof window !== "undefined"
-            ? sessionStorage.getItem("zeewrites_admin_token")
-            : null;
-        const headers: Record<string, string> = {
-          "Content-Type": "application/json",
-        };
-        if (token) headers["Authorization"] = `Bearer ${token}`;
-
         const res = await fetch("/api/cms", {
           method: "POST",
-          headers,
+          headers: { "Content-Type": "application/json" },
           credentials: "include",
           body: JSON.stringify({ action: "check_auth" }),
         });
         const data = await res.json();
         if (data.authenticated) {
           setIsAuthenticated(true);
+          await refreshCmsData();
         }
       } catch {
         // ignore
       }
     }
     verifyAuth();
-  }, []);
+  }, [refreshCmsData]);
 
   const handleUnlock = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -267,13 +260,10 @@ export function StealthStudioVault() {
         return;
       }
 
-      if (data.token && typeof window !== "undefined") {
-        sessionStorage.setItem("zeewrites_admin_token", data.token);
-      }
-
       setIsAuthenticated(true);
       setPassphraseInput("");
       setPinInput("");
+      await refreshCmsData();
       showToast("Stealth Editorial Studio Unlocked.");
     } catch {
       setIsLoggingIn(false);
@@ -283,30 +273,19 @@ export function StealthStudioVault() {
 
   const handleLockVault = async () => {
     try {
-      const token =
-        typeof window !== "undefined"
-          ? sessionStorage.getItem("zeewrites_admin_token")
-          : null;
-      const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-      };
-      if (token) headers["Authorization"] = `Bearer ${token}`;
-
       await fetch("/api/cms", {
         method: "POST",
-        headers,
+        headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({ action: "logout" }),
       });
     } catch {
       // ignore
     }
-    if (typeof window !== "undefined") {
-      sessionStorage.removeItem("zeewrites_admin_token");
-    }
     setIsAuthenticated(false);
     setPassphraseInput("");
     setPinInput("");
+    await refreshCmsData();
     showToast("Stealth Studio Vault locked.");
   };
 

@@ -66,23 +66,14 @@ export function SiteProvider({
     return () => clearTimeout(timer);
   }, [toastMessage]);
 
-  // Clean up legacy localStorage keys that previously caused resurrection/stale state
+  // Clean up legacy caches and ensure consistent light mode
   useEffect(() => {
     try {
       localStorage.removeItem("zeewrites_cms_backup_v2");
       localStorage.removeItem("zeewrites_theme_v3");
       localStorage.removeItem("zeewrites_theme_v1");
       localStorage.removeItem("zeewrites_local_db_v1");
-
-      if (articles.length === 0) {
-        const cached = localStorage.getItem("zeewrites_client_cache_v3");
-        if (cached) {
-          const parsed = JSON.parse(cached);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            setArticles(parsed);
-          }
-        }
-      }
+      sessionStorage.removeItem("zeewrites_admin_token");
     } catch {
       // ignore
     }
@@ -202,43 +193,21 @@ export function SiteProvider({
   }, [router, showToast]);
 
   const getAuthHeaders = (): Record<string, string> => {
-    const headers: Record<string, string> = { "Content-Type": "application/json" };
-    if (typeof window !== "undefined") {
-      const token = sessionStorage.getItem("zeewrites_admin_token");
-      if (token) headers["Authorization"] = `Bearer ${token}`;
-    }
-    return headers;
+    return { "Content-Type": "application/json" };
   };
 
   // Sync CMS Data with Server API (SINGLE SOURCE OF TRUTH)
   const refreshCmsData = useCallback(async () => {
     try {
-      const headers: Record<string, string> = { "Cache-Control": "no-cache" };
-      if (typeof window !== "undefined") {
-        const token = sessionStorage.getItem("zeewrites_admin_token");
-        if (token) headers["Authorization"] = `Bearer ${token}`;
-      }
-
       const res = await fetch("/api/cms", {
         cache: "no-store",
-        headers,
+        headers: { "Cache-Control": "no-cache" },
         credentials: "include",
       });
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data.articles)) {
-          setArticles((prev) => {
-            if (data.articles.length > 0) {
-              const merged = [...data.articles];
-              for (const p of prev) {
-                if (!merged.some((a) => a.id === p.id || a.slug === p.slug)) {
-                  merged.push(p);
-                }
-              }
-              return merged;
-            }
-            return prev;
-          });
+          setArticles(data.articles);
         }
         if (data.settings) setSettings(data.settings);
         setIsAdminAuthenticated(Boolean(data.authenticated));
@@ -297,6 +266,11 @@ export function SiteProvider({
 
       // Optimistic update
       setArticles((prev) => prev.filter((a) => a.id !== id && a.slug !== id));
+      try {
+        localStorage.removeItem("zeewrites_client_cache_v3");
+      } catch {
+        // ignore
+      }
 
       try {
         const res = await fetch("/api/cms", {

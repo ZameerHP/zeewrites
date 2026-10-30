@@ -576,31 +576,33 @@ export function ArticleReaderView({
       </div>
 
       {/* Related Guides Grid */}
-      <section
-        aria-labelledby="related-guides-heading"
-        className="mt-16 pt-12 border-t border-hairline space-y-6"
-      >
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <h2
-            id="related-guides-heading"
-            className="font-sans font-medium text-[clamp(24px,3.5vw,36px)] text-ink tracking-[-0.02em]"
-          >
-            Related Guides
-          </h2>
-          <Link
-            href={`/category/${article.category}`}
-            className="inline-flex items-center gap-1.5 min-h-[44px] text-[15px] font-semibold text-navy hover:underline"
-          >
-            <span>View All in {category?.shortName}</span>
-            <ArrowRight className="w-4 h-4" strokeWidth={1.5} />
-          </Link>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {relatedArticles.map((rel) => (
-            <ArticleCard key={rel.id} article={rel} />
-          ))}
-        </div>
-      </section>
+      {relatedArticles.length > 0 && (
+        <section
+          aria-labelledby="related-guides-heading"
+          className="mt-16 pt-12 border-t border-hairline space-y-6"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <h2
+              id="related-guides-heading"
+              className="font-sans font-medium text-[clamp(24px,3.5vw,36px)] text-ink tracking-[-0.02em]"
+            >
+              Related Guides
+            </h2>
+            <Link
+              href={`/category/${article.category}`}
+              className="inline-flex items-center gap-1.5 min-h-[44px] text-[15px] font-semibold text-navy hover:underline"
+            >
+              <span>View All in {category?.shortName}</span>
+              <ArrowRight className="w-4 h-4" strokeWidth={1.5} />
+            </Link>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {relatedArticles.map((rel) => (
+              <ArticleCard key={rel.id} article={rel} />
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }

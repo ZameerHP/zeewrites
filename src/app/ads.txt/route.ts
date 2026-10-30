@@ -9,7 +9,7 @@ export async function GET() {
     settings.adsTxtContent?.trim() ||
     (settings.publisherId
       ? `google.com, ${settings.publisherId.replace(/^ca-/, "")}, DIRECT, f08c47fec0942fa0`
-      : "");
+      : "google.com, pub-0000000000000000, DIRECT, f08c47fec0942fa0");
 
   return new NextResponse(body ? body + "\n" : "", {
     status: 200,

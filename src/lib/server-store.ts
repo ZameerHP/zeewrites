@@ -124,6 +124,12 @@ function mapRowToArticle(row: any): Article {
   };
 }
 
+function isTestOrPlaceholderArticle(a: Article): boolean {
+  const isGibberishSlug = /^[a-z]{20,}$/i.test(a.slug) || a.slug.includes("wswjhsb");
+  const isGibberishTitle = a.title.includes("wswjhsb") || a.title === "WSWSWS";
+  return isGibberishSlug || isGibberishTitle;
+}
+
 /**
  * Read Database:
  * Queries Supabase when configured, seamlessly combines with serverless runtime store.
@@ -142,14 +148,16 @@ export async function getDatabase(): Promise<DatabaseSchema> {
       ]);
 
       if (!artRes.error && Array.isArray(artRes.data)) {
-        const supabaseArticles: Article[] = artRes.data.map(mapRowToArticle);
+        let supabaseArticles: Article[] = artRes.data.map(mapRowToArticle);
 
-        // Include any articles created locally/in tmp that haven't synced to Supabase yet
-        const combined = [...supabaseArticles];
-        for (const locArt of local.articles) {
-          if (!combined.some((a) => a.id === locArt.id || a.slug === locArt.slug)) {
-            combined.push(locArt);
+        // Purge any test/placeholder posts from production Supabase
+        const testArticles = supabaseArticles.filter(isTestOrPlaceholderArticle);
+        if (testArticles.length > 0) {
+          for (const testArt of testArticles) {
+            supabaseAdmin.from("articles").delete().eq("id", testArt.id).then(() => {});
+            supabaseAdmin.from("articles").delete().eq("slug", testArt.slug).then(() => {});
           }
+          supabaseArticles = supabaseArticles.filter((a) => !isTestOrPlaceholderArticle(a));
         }
 
         const settings: SiteSettings =
@@ -157,11 +165,21 @@ export async function getDatabase(): Promise<DatabaseSchema> {
             ? setRes.data.raw_payload
             : local.settings || DEFAULT_SITE_SETTINGS;
 
-        return { articles: combined, settings };
+        // Sync local cache with authoritative Supabase state
+        writeLocalJson({ articles: supabaseArticles, settings });
+
+        return { articles: supabaseArticles, settings };
       }
     } catch (err) {
       console.warn("Supabase getDatabase notice (using local/tmp store):", err);
     }
+  }
+
+  // Filter test articles from local store as well
+  const cleanLocalArticles = local.articles.filter((a) => !isTestOrPlaceholderArticle(a));
+  if (cleanLocalArticles.length !== local.articles.length) {
+    local.articles = cleanLocalArticles;
+    writeLocalJson(local);
   }
 
   return local;
@@ -261,11 +279,10 @@ export async function removeArticle(id: string): Promise<DatabaseSchema> {
   // 2. Delete from Supabase if configured
   if (isSupabaseConfigured && supabaseAdmin) {
     try {
-      await supabaseAdmin
-        .from("articles")
-        .delete()
-        .or(`id.eq.${id},slug.eq.${id}`)
-        .select();
+      await Promise.all([
+        supabaseAdmin.from("articles").delete().eq("id", id),
+        supabaseAdmin.from("articles").delete().eq("slug", id),
+      ]);
     } catch (err) {
       console.warn("Supabase delete warning:", err);
     }

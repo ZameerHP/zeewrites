@@ -136,25 +136,34 @@ export function recordLoginAttempt(ip: string, success: boolean): void {
   }
 }
 
+const AUTH_SALT = "zeewrites-admin-auth-salt-v1";
+
+function hashSecret(input: string): Buffer {
+  return crypto.scryptSync(input, AUTH_SALT, 64);
+}
+
 /**
  * Verify credentials against environment variables
  * ADMIN_PASSPHRASE and ADMIN_PIN
- * Defaults provided for initial transition if not set, but logs warning
+ * Uses salted scrypt hashing and constant-time buffer comparison.
  */
 export function verifyCredentials(passphrase: string, pin: string): boolean {
   const envPass = process.env.ADMIN_PASSPHRASE || "zeewrites-master-vault";
   const envPin = process.env.ADMIN_PIN || "202600";
 
-  // Use timing-safe string comparison
-  const passMatch =
-    passphrase.length === envPass.length &&
-    crypto.timingSafeEqual(Buffer.from(passphrase), Buffer.from(envPass));
+  try {
+    const inputPassHash = hashSecret(passphrase);
+    const expectedPassHash = hashSecret(envPass);
+    const passMatch = crypto.timingSafeEqual(inputPassHash, expectedPassHash);
 
-  const pinMatch =
-    pin.length === envPin.length &&
-    crypto.timingSafeEqual(Buffer.from(pin), Buffer.from(envPin));
+    const inputPinHash = hashSecret(pin);
+    const expectedPinHash = hashSecret(envPin);
+    const pinMatch = crypto.timingSafeEqual(inputPinHash, expectedPinHash);
 
-  return passMatch && pinMatch;
+    return passMatch && pinMatch;
+  } catch {
+    return false;
+  }
 }
 
 export { SESSION_COOKIE_NAME, SESSION_MAX_AGE };

@@ -280,7 +280,7 @@ interface SimpleAdminPanelProps {
 type View = "list" | "editor";
 
 export function SimpleAdminPanel({ onLock, onOpenAdvanced }: SimpleAdminPanelProps) {
-  const { articles, upsertArticle, deleteArticle, showToast } = useSite();
+  const { articles, upsertArticle, deleteArticle, showToast, refreshCmsData } = useSite();
 
   const [view, setView] = useState<View>("list");
   const [listFilter, setListFilter] = useState<"all" | CategorySlug>("all");
@@ -289,6 +289,11 @@ export function SimpleAdminPanel({ onLock, onOpenAdvanced }: SimpleAdminPanelPro
   // Modal deletion state
   const [deleteTarget, setDeleteTarget] = useState<Article | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Sync latest posts and categories from server on mount and when viewing list
+  useEffect(() => {
+    refreshCmsData();
+  }, [view, refreshCmsData]);
 
   // Ensure scroll is free and not locked
   useEffect(() => {

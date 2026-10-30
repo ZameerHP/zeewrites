@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useState } from "react";
 import { ArrowRight, Check } from "lucide-react";
 import { ArticleImage } from "@/types";
+import { ZeeMark } from "@/components/ui/ZeeLogo";
 
 interface TechnicalDiagramProps {
   image: ArticleImage;
@@ -16,11 +17,15 @@ export function TechnicalDiagram({
   showCaption = false,
   className = "",
 }: TechnicalDiagramProps) {
+  const [imgError, setImgError] = useState(false);
   const isCustomUploadedUrl =
-    image.url.startsWith("data:image/") ||
-    image.url.startsWith("http://") ||
-    image.url.startsWith("https://") ||
-    image.diagramType === "custom-upload";
+    Boolean(image.url) &&
+    (image.url.startsWith("data:image/") ||
+      image.url.startsWith("http://") ||
+      image.url.startsWith("https://") ||
+      image.diagramType === "custom-upload");
+
+  const showImg = isCustomUploadedUrl && !imgError && Boolean(image.url?.trim());
 
   return (
     <figure className={`w-full ${className}`}>
@@ -35,7 +40,7 @@ export function TechnicalDiagram({
           className="pointer-events-none absolute inset-0 vignette-sheen"
         />
 
-        {isCustomUploadedUrl ? (
+        {showImg ? (
           <img
             src={image.url}
             alt={image.alt}
@@ -44,10 +49,11 @@ export function TechnicalDiagram({
             loading={priority ? "eager" : "lazy"}
             fetchPriority={priority ? "high" : "auto"}
             decoding="async"
+            onError={() => setImgError(true)}
             className="relative z-10 w-full h-full object-cover rounded-[12px]"
           />
         ) : (
-          <VignetteScene type={image.diagramType || "utf8-pipeline"} />
+          <VignetteScene type={image.diagramType || "ssl-handshake"} />
         )}
       </div>
 
@@ -285,6 +291,19 @@ function VignetteScene({
           <div className="self-end rounded-full bg-surface shadow-secondary px-3 py-1 rotate-2 text-[12px] font-medium text-navy inline-flex items-center gap-1.5">
             <Check className="w-3.5 h-3.5" strokeWidth={1.5} />
             <span>TLS 1.3 handshake verified</span>
+          </div>
+        </div>
+      );
+
+    /* 11. Official Zee Writes Brand Mark Vignette Fallback */
+    case "brand-mark" as any:
+      return (
+        <div
+          aria-hidden="true"
+          className="relative z-10 w-full max-w-[285px] flex items-center justify-center py-4"
+        >
+          <div className="w-[72px] h-[72px] rounded-[20px] bg-surface shadow-card border border-hairline flex items-center justify-center">
+            <ZeeMark size={40} />
           </div>
         </div>
       );
