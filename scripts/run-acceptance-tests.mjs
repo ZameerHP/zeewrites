@@ -1,7 +1,11 @@
 import { spawn } from "node:child_process";
+import fs from "node:fs";
+import path from "node:path";
 
 const PORT = 3005;
 const BASE_URL = `http://127.0.0.1:${PORT}`;
+const dbPath = path.join(process.cwd(), "data", "zeewrites-db.json");
+let dbBackup = null;
 
 async function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -43,6 +47,9 @@ async function waitForServer(maxAttempts = 40) {
 
 async function run() {
   console.log("=== STARTING ZEES WRITES ACCEPTANCE TEST SUITE ===\n");
+  if (fs.existsSync(dbPath)) {
+    dbBackup = fs.readFileSync(dbPath, "utf8");
+  }
   console.log("Starting Next.js production server on port", PORT, "...");
 
   const serverProc = spawn("npx.cmd", ["next", "start", "-p", String(PORT)], {
@@ -354,6 +361,12 @@ async function run() {
     try {
       spawn("taskkill", ["/pid", String(serverProc.pid), "/f", "/t"]);
     } catch {}
+    if (dbBackup !== null) {
+      try {
+        fs.writeFileSync(dbPath, dbBackup, "utf8");
+        console.log("Restored user database from backup.");
+      } catch {}
+    }
   }
 
   if (failedCount > 0) {

@@ -389,7 +389,7 @@ interface SimpleAdminPanelProps {
 type View = "list" | "editor";
 
 export function SimpleAdminPanel({ onLock, onOpenAdvanced }: SimpleAdminPanelProps) {
-  const { articles, upsertArticle, deleteArticle, showToast, refreshCmsData } = useSite();
+  const { articles, upsertArticle, deleteArticle, showToast, refreshCmsData, storageMode } = useSite();
 
   const [view, setView] = useState<View>("list");
   const [listFilter, setListFilter] = useState<"all" | CategorySlug>("all");
@@ -815,7 +815,8 @@ export function SimpleAdminPanel({ onLock, onOpenAdvanced }: SimpleAdminPanelPro
             </span>
           </div>
           <p className="text-[13px] text-muted mt-0.5">
-            {articles.length} posts · {articles.filter((a) => a.status === "draft").length} drafts · Cloud Supabase enabled
+            {articles.length} posts · {articles.filter((a) => a.status === "draft").length} drafts ·{" "}
+            {storageMode === "supabase" ? "Cloud Database Connected" : "Persistent Local Storage"}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">

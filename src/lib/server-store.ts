@@ -3,11 +3,13 @@ import path from "node:path";
 import os from "node:os";
 import { Article, SiteSettings } from "@/types";
 import { DEFAULT_SITE_SETTINGS } from "@/data/categories";
+import { SEED_ARTICLES } from "@/data/articles";
 import { supabaseAdmin, storageMode, isSupabaseConfigured } from "./supabase";
 
 export interface DatabaseSchema {
   articles: Article[];
   settings: SiteSettings;
+  deletedIds?: string[];
 }
 
 const DATA_DIR = path.join(process.cwd(), "data");
@@ -18,6 +20,7 @@ const TMP_DB_FILE = path.join(os.tmpdir(), "zeewrites-db.json");
  * Local / Serverless JSON read
  * Reads from TMP_DB_FILE if it exists (written during runtime on Vercel),
  * otherwise reads from LOCAL_DB_FILE.
+ * If empty/uninitialized, seeds baseline articles.
  */
 function readLocalJson(): DatabaseSchema {
   try {
@@ -29,22 +32,40 @@ function readLocalJson(): DatabaseSchema {
 
     if (!fileToRead) {
       return {
-        articles: [],
+        articles: [...SEED_ARTICLES],
         settings: DEFAULT_SITE_SETTINGS,
+        deletedIds: [],
       };
     }
     const raw = fs.readFileSync(fileToRead, "utf8");
     const parsed = JSON.parse(raw) as Partial<DatabaseSchema>;
-    const articles = Array.isArray(parsed.articles) ? parsed.articles : [];
+    const deletedIds = Array.isArray(parsed.deletedIds) ? parsed.deletedIds : [];
+
+    let articles: Article[] = [];
+    if (Array.isArray(parsed.articles) && parsed.articles.length > 0) {
+      articles = parsed.articles;
+    } else if (deletedIds.length === 0) {
+      articles = [...SEED_ARTICLES];
+    } else {
+      articles = [];
+    }
+
+    if (deletedIds.length > 0) {
+      articles = articles.filter(
+        (a) => !deletedIds.includes(a.id) && !deletedIds.includes(a.slug)
+      );
+    }
+
     const settings: SiteSettings = {
       ...DEFAULT_SITE_SETTINGS,
       ...(parsed.settings || {}),
     };
-    return { articles, settings };
+    return { articles, settings, deletedIds };
   } catch {
     return {
-      articles: [],
+      articles: [...SEED_ARTICLES],
       settings: DEFAULT_SITE_SETTINGS,
+      deletedIds: [],
     };
   }
 }
@@ -125,9 +146,12 @@ function mapRowToArticle(row: any): Article {
 }
 
 function isTestOrPlaceholderArticle(a: Article): boolean {
-  const isGibberishSlug = /^[a-z]{20,}$/i.test(a.slug) || a.slug.includes("wswjhsb");
-  const isGibberishTitle = a.title.includes("wswjhsb") || a.title === "WSWSWS";
-  return isGibberishSlug || isGibberishTitle;
+  return (
+    a.slug.includes("wswjhsb") ||
+    a.slug === "wswsws" ||
+    a.title.includes("wswjhsb") ||
+    a.title.trim().toUpperCase() === "WSWSWS"
+  );
 }
 
 /**
@@ -150,32 +174,24 @@ export async function getDatabase(): Promise<DatabaseSchema> {
       if (!artRes.error && Array.isArray(artRes.data)) {
         let supabaseArticles: Article[] = artRes.data.map(mapRowToArticle);
 
-        // Purge any test/placeholder posts from production Supabase
-        const testArticles = supabaseArticles.filter(isTestOrPlaceholderArticle);
-        if (testArticles.length > 0) {
-          for (const testArt of testArticles) {
-            supabaseAdmin.from("articles").delete().eq("id", testArt.id).then(() => {});
-            supabaseAdmin.from("articles").delete().eq("slug", testArt.slug).then(() => {});
-          }
-          supabaseArticles = supabaseArticles.filter((a) => !isTestOrPlaceholderArticle(a));
-        }
+        // Filter any test/placeholder posts from returned array
+        supabaseArticles = supabaseArticles.filter((a) => !isTestOrPlaceholderArticle(a));
 
         const settings: SiteSettings =
           setRes.data && setRes.data.raw_payload
             ? setRes.data.raw_payload
             : local.settings || DEFAULT_SITE_SETTINGS;
 
-        // Sync local cache with authoritative Supabase state
-        writeLocalJson({ articles: supabaseArticles, settings });
+        // Keep local cache in sync
+        writeLocalJson({ articles: supabaseArticles, settings, deletedIds: local.deletedIds });
 
-        return { articles: supabaseArticles, settings };
+        return { articles: supabaseArticles, settings, deletedIds: local.deletedIds };
       }
     } catch (err) {
       console.warn("Supabase getDatabase notice (using local/tmp store):", err);
     }
   }
 
-  // Filter test articles from local store as well
   const cleanLocalArticles = local.articles.filter((a) => !isTestOrPlaceholderArticle(a));
   if (cleanLocalArticles.length !== local.articles.length) {
     local.articles = cleanLocalArticles;
@@ -192,6 +208,12 @@ export async function getDatabase(): Promise<DatabaseSchema> {
 export async function saveArticle(article: Article): Promise<DatabaseSchema> {
   // 1. Immediately persist to local/serverless runtime storage
   const current = readLocalJson();
+  if (current.deletedIds) {
+    current.deletedIds = current.deletedIds.filter(
+      (id) => id !== article.id && id !== article.slug
+    );
+  }
+
   const existingIdx = current.articles.findIndex(
     (a) => a.id === article.id || a.slug === article.slug
   );
@@ -273,6 +295,15 @@ export async function saveArticle(article: Article): Promise<DatabaseSchema> {
 export async function removeArticle(id: string): Promise<DatabaseSchema> {
   // 1. Remove from local/serverless runtime storage
   const current = readLocalJson();
+  if (!current.deletedIds) current.deletedIds = [];
+  if (!current.deletedIds.includes(id)) {
+    current.deletedIds.push(id);
+  }
+  const target = current.articles.find((a) => a.id === id || a.slug === id);
+  if (target?.slug && !current.deletedIds.includes(target.slug)) {
+    current.deletedIds.push(target.slug);
+  }
+
   current.articles = current.articles.filter((a) => a.id !== id && a.slug !== id);
   writeLocalJson(current);
 
@@ -282,6 +313,7 @@ export async function removeArticle(id: string): Promise<DatabaseSchema> {
       await Promise.all([
         supabaseAdmin.from("articles").delete().eq("id", id),
         supabaseAdmin.from("articles").delete().eq("slug", id),
+        target?.slug ? supabaseAdmin.from("articles").delete().eq("slug", target.slug) : Promise.resolve(),
       ]);
     } catch (err) {
       console.warn("Supabase delete warning:", err);
