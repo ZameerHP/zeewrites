@@ -16,54 +16,85 @@ const DATA_DIR = path.join(process.cwd(), "data");
 const LOCAL_DB_FILE = path.join(DATA_DIR, "zeewrites-db.json");
 const TMP_DB_FILE = path.join(os.tmpdir(), "zeewrites-db.json");
 
+function isTestOrPlaceholderArticle(a: Article): boolean {
+  return (
+    a.slug.includes("wswjhsb") ||
+    a.slug === "wswsws" ||
+    a.title.includes("wswjhsb") ||
+    a.title.trim().toUpperCase() === "WSWSWS"
+  );
+}
+
 /**
  * Local / Serverless JSON read
- * Reads from TMP_DB_FILE if it exists (written during runtime on Vercel),
- * otherwise reads from LOCAL_DB_FILE.
- * If empty/uninitialized, seeds baseline articles.
+ * Merges authoritative LOCAL_DB_FILE and TMP_DB_FILE (written at runtime on Vercel),
+ * strictly filters against all deletedIds, and guarantees zero resurrection of deleted posts.
  */
 function readLocalJson(): DatabaseSchema {
   try {
-    const fileToRead = fs.existsSync(TMP_DB_FILE)
-      ? TMP_DB_FILE
-      : fs.existsSync(LOCAL_DB_FILE)
-      ? LOCAL_DB_FILE
-      : null;
+    let localParsed: Partial<DatabaseSchema> | null = null;
+    let tmpParsed: Partial<DatabaseSchema> | null = null;
 
-    if (!fileToRead) {
+    if (fs.existsSync(LOCAL_DB_FILE)) {
+      try {
+        localParsed = JSON.parse(fs.readFileSync(LOCAL_DB_FILE, "utf8"));
+      } catch {}
+    }
+
+    if (fs.existsSync(TMP_DB_FILE)) {
+      try {
+        tmpParsed = JSON.parse(fs.readFileSync(TMP_DB_FILE, "utf8"));
+      } catch {}
+    }
+
+    if (!localParsed && !tmpParsed) {
       return {
-        articles: [...SEED_ARTICLES],
+        articles: [],
         settings: DEFAULT_SITE_SETTINGS,
         deletedIds: [],
       };
     }
-    const raw = fs.readFileSync(fileToRead, "utf8");
-    const parsed = JSON.parse(raw) as Partial<DatabaseSchema>;
-    const deletedIds = Array.isArray(parsed.deletedIds) ? parsed.deletedIds : [];
 
-    let articles: Article[] = [];
-    if (Array.isArray(parsed.articles) && parsed.articles.length > 0) {
-      articles = parsed.articles;
-    } else if (deletedIds.length === 0) {
-      articles = [...SEED_ARTICLES];
-    } else {
-      articles = [];
+    const localDeleted = Array.isArray(localParsed?.deletedIds) ? localParsed.deletedIds : [];
+    const tmpDeleted = Array.isArray(tmpParsed?.deletedIds) ? tmpParsed.deletedIds : [];
+    const allDeleted = Array.from(new Set([...localDeleted, ...tmpDeleted]));
+
+    const articleMap = new Map<string, Article>();
+    if (Array.isArray(localParsed?.articles)) {
+      for (const a of localParsed.articles) {
+        articleMap.set(a.id, a);
+        if (a.slug) articleMap.set(a.slug, a);
+      }
+    }
+    if (Array.isArray(tmpParsed?.articles)) {
+      for (const a of tmpParsed.articles) {
+        articleMap.set(a.id, a);
+        if (a.slug) articleMap.set(a.slug, a);
+      }
     }
 
-    if (deletedIds.length > 0) {
-      articles = articles.filter(
-        (a) => !deletedIds.includes(a.id) && !deletedIds.includes(a.slug)
-      );
-    }
+    const mergedArticles = Array.from(new Set(Array.from(articleMap.values())));
+    const filteredArticles = mergedArticles.filter(
+      (a) =>
+        !allDeleted.includes(a.id) &&
+        !allDeleted.includes(a.slug) &&
+        !isTestOrPlaceholderArticle(a)
+    );
 
     const settings: SiteSettings = {
       ...DEFAULT_SITE_SETTINGS,
-      ...(parsed.settings || {}),
+      ...(localParsed?.settings || {}),
+      ...(tmpParsed?.settings || {}),
     };
-    return { articles, settings, deletedIds };
+
+    return {
+      articles: filteredArticles,
+      settings,
+      deletedIds: allDeleted,
+    };
   } catch {
     return {
-      articles: [...SEED_ARTICLES],
+      articles: [],
       settings: DEFAULT_SITE_SETTINGS,
       deletedIds: [],
     };
@@ -145,15 +176,6 @@ function mapRowToArticle(row: any): Article {
   };
 }
 
-function isTestOrPlaceholderArticle(a: Article): boolean {
-  return (
-    a.slug.includes("wswjhsb") ||
-    a.slug === "wswsws" ||
-    a.title.includes("wswjhsb") ||
-    a.title.trim().toUpperCase() === "WSWSWS"
-  );
-}
-
 /**
  * Read Database:
  * Queries Supabase when configured, seamlessly combines with serverless runtime store.
@@ -171,32 +193,99 @@ export async function getDatabase(): Promise<DatabaseSchema> {
         supabaseAdmin.from("site_settings").select("*").limit(1).maybeSingle(),
       ]);
 
+      const remoteDeletedIds: string[] = Array.isArray(setRes?.data?.raw_payload?.deletedIds)
+        ? setRes.data.raw_payload.deletedIds
+        : [];
+
+      // Combine local and remote deletedIds so all workers stay synced
+      const allDeletedIds = Array.from(
+        new Set([...(local.deletedIds || []), ...remoteDeletedIds])
+      );
+
       if (!artRes.error && Array.isArray(artRes.data)) {
         let supabaseArticles: Article[] = artRes.data.map(mapRowToArticle);
 
-        // Filter any test/placeholder posts from returned array
-        supabaseArticles = supabaseArticles.filter((a) => !isTestOrPlaceholderArticle(a));
+        // Merge local articles and supabase articles to guarantee zero data loss
+        // of published user articles (e.g. Windows 11 article)
+        const articleMap = new Map<string, Article>();
+        for (const a of local.articles) {
+          articleMap.set(a.id, a);
+          if (a.slug) articleMap.set(a.slug, a);
+        }
+        for (const a of supabaseArticles) {
+          articleMap.set(a.id, a);
+          if (a.slug) articleMap.set(a.slug, a);
+        }
+
+        const merged = Array.from(new Set(Array.from(articleMap.values())));
+
+        // Strictly filter out any deleted articles and test/placeholder articles
+        const cleanArticles = merged.filter((a) => {
+          if (allDeletedIds.includes(a.id) || (a.slug && allDeletedIds.includes(a.slug))) {
+            return false;
+          }
+          if (isTestOrPlaceholderArticle(a)) {
+            return false;
+          }
+          return true;
+        });
+
+        // Asynchronously delete any ghost rows from Supabase articles table
+        const ghostsInSupabase = supabaseArticles.filter(
+          (a) => allDeletedIds.includes(a.id) || (a.slug && allDeletedIds.includes(a.slug))
+        );
+        if (ghostsInSupabase.length > 0) {
+          const idsToRemove = ghostsInSupabase.map((a) => a.id);
+          Promise.resolve(
+            supabaseAdmin.from("articles").delete().in("id", idsToRemove)
+          ).catch(() => {});
+        }
+
+        // Asynchronously back up any local articles not yet in Supabase
+        for (const a of cleanArticles) {
+          const exists = supabaseArticles.some((sa) => sa.id === a.id || sa.slug === a.slug);
+          if (!exists) {
+            saveArticle(a).catch((e) => console.warn("Sync article to Supabase warning:", e));
+          }
+        }
 
         const settings: SiteSettings =
           setRes.data && setRes.data.raw_payload
-            ? setRes.data.raw_payload
+            ? {
+                ...DEFAULT_SITE_SETTINGS,
+                ...local.settings,
+                ...setRes.data.raw_payload,
+              }
             : local.settings || DEFAULT_SITE_SETTINGS;
 
-        // Keep local cache in sync
-        writeLocalJson({ articles: supabaseArticles, settings, deletedIds: local.deletedIds });
+        const result: DatabaseSchema = {
+          articles: cleanArticles,
+          settings,
+          deletedIds: allDeletedIds,
+        };
 
-        return { articles: supabaseArticles, settings, deletedIds: local.deletedIds };
+        // Keep local/tmp cache in sync
+        writeLocalJson(result);
+
+        return result;
       }
     } catch (err) {
       console.warn("Supabase getDatabase notice (using local/tmp store):", err);
     }
   }
 
-  const cleanLocalArticles = local.articles.filter((a) => !isTestOrPlaceholderArticle(a));
-  if (cleanLocalArticles.length !== local.articles.length) {
-    local.articles = cleanLocalArticles;
-    writeLocalJson(local);
-  }
+  // Fallback when Supabase is offline or not configured
+  const allDeletedIds = local.deletedIds || [];
+  const cleanLocalArticles = local.articles.filter((a) => {
+    if (allDeletedIds.includes(a.id) || (a.slug && allDeletedIds.includes(a.slug))) {
+      return false;
+    }
+    return !isTestOrPlaceholderArticle(a);
+  });
+
+  local.articles = cleanLocalArticles;
+  local.deletedIds = allDeletedIds;
+  writeLocalJson(local);
 
   return local;
 }
@@ -307,13 +396,21 @@ export async function removeArticle(id: string): Promise<DatabaseSchema> {
   current.articles = current.articles.filter((a) => a.id !== id && a.slug !== id);
   writeLocalJson(current);
 
-  // 2. Delete from Supabase if configured
+  // 2. Delete from Supabase if configured and persist deletedIds to site_settings
   if (isSupabaseConfigured && supabaseAdmin) {
     try {
       await Promise.all([
         supabaseAdmin.from("articles").delete().eq("id", id),
         supabaseAdmin.from("articles").delete().eq("slug", id),
         target?.slug ? supabaseAdmin.from("articles").delete().eq("slug", target.slug) : Promise.resolve(),
+        supabaseAdmin.from("site_settings").upsert({
+          id: "global_settings",
+          raw_payload: {
+            ...current.settings,
+            deletedIds: current.deletedIds,
+          },
+          updated_at: new Date().toISOString(),
+        }),
       ]);
     } catch (err) {
       console.warn("Supabase delete warning:", err);

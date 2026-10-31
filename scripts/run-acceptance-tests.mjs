@@ -334,23 +334,35 @@ async function run() {
       assert(stayedGoneHome, "Homepage STAYS GONE: displays clean empty state without resurrecting article");
     }
 
-    // TEST 5: LAST POST DELETED & NO DEFAULT SEED AUTO-INSERTION
-    console.log("\n--- TEST 5: Last Post Deletion & Clean Empty State ---");
+    // TEST 5: TEST POST DELETED & NO DEFAULT SEED AUTO-INSERTION
+    console.log("\n--- TEST 5: Post Deletion & No Seed Post Resurrection ---");
     {
       const cmsStatus = await request("/api/cms");
-      const count = cmsStatus.json?.articles?.length || 0;
-      assert(count === 0, `Database has exactly 0 articles; NO sample or default posts (art-test-dns) are resurrected`);
+      const testArtStillThere = cmsStatus.json?.articles?.some((a) => a.id === testArticle.id);
+      assert(!testArtStillThere, `Test article art-acceptance-test-1 is deleted`);
+
+      const hasResurrectedSeeds = cmsStatus.json?.articles?.some((a) =>
+        a.id.startsWith("art-0") || a.id === "art-10" || a.slug.includes("corrupted-utf8")
+      );
+      assert(!hasResurrectedSeeds, "No sample/seed articles (art-01..art-10) are resurrected");
+
+      const userArticlePreserved = cmsStatus.json?.articles?.some((a) =>
+        a.title.includes("Windows 11 24H2") || a.id === "art-1793459983482"
+      );
+      assert(userArticlePreserved, "User article 'Windows 11 24H2 Support Has Ended' is safely preserved");
 
       const catPage = await request("/category/how-to-fixes");
       assert(
-        catPage.text.includes("No guides in this category yet"),
-        "Category page shows clean empty-state UI without errors or sample cards"
+        !catPage.text.includes("How to Fix DNS Latency on Windows 11"),
+        "Category page does not resurrect deleted test article"
       );
 
-      const homePage = await request("/");
+      const sitemapPage = await request("/sitemap-page");
       assert(
-        homePage.text.includes("No guides published yet"),
-        "Homepage shows clean empty-state UI without errors or sample cards"
+        !sitemapPage.text.includes("How to Fix DNS Latency on Windows 11") &&
+        !sitemapPage.text.includes("art-01") &&
+        !sitemapPage.text.includes("fix-corrupted-utf8"),
+        "Sitemap page does not display deleted test or sample articles"
       );
     }
 

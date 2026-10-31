@@ -6,6 +6,7 @@ import { getDatabase } from "@/lib/server-store";
 import { CATEGORIES, CATEGORY_LIST } from "@/data/categories";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export const metadata: Metadata = {
   title: "Sitemap | Zee Writes",
@@ -17,8 +18,13 @@ export const metadata: Metadata = {
 };
 
 export default async function HtmlSitemapPage() {
-  const { articles } = await getDatabase();
-  const published = articles.filter((a) => a.status === "published");
+  const { articles, deletedIds = [] } = await getDatabase();
+  const published = articles.filter(
+    (a) =>
+      a.status === "published" &&
+      !deletedIds.includes(a.id) &&
+      !deletedIds.includes(a.slug)
+  );
 
   return (
     <div className="space-y-12 pb-8">

@@ -1,5 +1,141 @@
 {
-  "articles": [],
+  "articles": [
+    {
+      "id": "art-1793459983482",
+      "slug": "windows-11-24h2-support-has-ended-what-to-do-now-and-how-to-upgrade-safely",
+      "title": "Windows 11 24H2 Support Has Ended: What to Do Now and How to Upgrade Safely",
+      "subtitle": "What Windows 11 24H2 end of support means for your device, how to check your current build, and step-by-step instructions to upgrade safely.",
+      "excerpt": "Everything you need to know about Windows 11 24H2 reaching end of servicing: security risks, compatibility checks, and how to upgrade safely without losing files.",
+      "category": "how-to-fixes",
+      "publishedAt": "2026-10-31T15:19:43.480Z",
+      "updatedAt": "2026-10-31T15:19:43.480Z",
+      "testedOn": "Windows 11 Home & Pro (Build 26100)",
+      "readingTimeMinutes": 6,
+      "wordCount": 1150,
+      "featured": true,
+      "status": "published",
+      "primaryKeyword": "windows 11 24h2 support has ended upgrade",
+      "metaTitle": "Windows 11 24H2 Support Has Ended: What to Do Now and How to Upgrade Safely | Zee Writes",
+      "metaDescription": "Windows 11 24H2 support has ended. Follow this step-by-step guide to verify your build, backup your files, and upgrade safely to the latest supported release.",
+      "coverImage": {
+        "url": "/images/diagrams/ssl-handshake.svg",
+        "alt": "Windows 11 24H2 Upgrade and Security Servicing Lifecycle Guide",
+        "caption": "Step-by-step Windows 11 servicing lifecycle and safe in-place upgrade path.",
+        "width": 1200,
+        "height": 750,
+        "diagramType": "ssl-handshake"
+      },
+      "verifiedTakeaway": {
+        "symptom": "Windows Update displays 'Your device is nearing the end of service' or stops receiving monthly cumulative security patches.",
+        "rootCause": "Microsoft enforces servicing timelines for Windows 11 feature updates. When a build reaches its retirement date, cumulative security updates and technical assistance cease.",
+        "instantFix": "Verify hardware compatibility, create a system restore point, and run the official Windows Update Assistant or in-place upgrade.",
+        "estimatedFixTime": "25–45 minutes",
+        "testedPlatforms": [
+          "Windows 11 Home",
+          "Windows 11 Pro",
+          "Windows 11 Enterprise"
+        ]
+      },
+      "howToSteps": [
+        {
+          "stepNumber": 1,
+          "name": "Check Your Current Windows 11 Build",
+          "text": "Press Windows Key + R, type winver in the Run dialog, and press Enter. Confirm whether your version reads Version 24H2 and note your OS Build number.",
+          "commandOrCode": "winver",
+          "proTip": "You can also open PowerShell and run: Get-ItemProperty 'HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion' | Select-Object DisplayVersion, CurrentBuild"
+        },
+        {
+          "stepNumber": 2,
+          "name": "Create a System Restore Point & Backup",
+          "text": "Before upgrading, ensure your important files are backed up to an external drive or cloud storage. Open Create a restore point from the Start menu and click Create.",
+          "proTip": "Having a recent restore point ensures you can roll back within 10 days if any third-party driver conflicts occur."
+        },
+        {
+          "stepNumber": 3,
+          "name": "Trigger the Official Upgrade via Windows Update",
+          "text": "Navigate to Settings > Windows Update and click Check for updates. If the next feature update is ready for your hardware, click Download & install.",
+          "commandOrCode": "usoclient StartInteractiveScan",
+          "proTip": "Ensure you have at least 20 GB of free drive space on your C: drive before starting the installation."
+        },
+        {
+          "stepNumber": 4,
+          "name": "Verify Installation and Enable Secure Baseline",
+          "text": "After the system restarts and finishes the upgrade, open Settings > System > About to confirm your new Windows version and verify that Windows Security shows all green checks.",
+          "commandOrCode": "Get-ComputerInfo | Select-Object OsName, OsVersion, OsBuildNumber"
+        }
+      ],
+      "sections": [
+        {
+          "id": "what-does-end-of-support-mean",
+          "heading": "1. What Does Windows 11 24H2 End of Support Mean?",
+          "paragraphs": [
+            "When a Windows 11 version reaches its End of Servicing date, Microsoft no longer provides monthly security intelligence updates, bug fixes, or technical support for that specific build.",
+            "While your PC will continue to boot and run installed applications normally, it becomes progressively more vulnerable to newly discovered zero-day exploits and malware that target unpatched kernel vulnerabilities."
+          ],
+          "callout": {
+            "type": "warning",
+            "title": "Security Warning",
+            "body": "Running an unserviced operating system on a network exposes your local credentials, browser sessions, and stored data to unpatched remote-code execution vulnerabilities."
+          }
+        },
+        {
+          "id": "immediate-action-plan",
+          "heading": "2. Recommended Action Plan for Users",
+          "paragraphs": [
+            "The safest and most reliable course of action is to perform an in-place upgrade to the latest supported Windows 11 feature update. In-place upgrades preserve all your personal files, desktop settings, and installed applications while replacing the core system files with the latest secure build.",
+            "Ensure your device meets the standard Windows 11 hardware baseline: TPM 2.0 enabled in UEFI BIOS, Secure Boot active, and at least 64 GB of total system storage."
+          ]
+        },
+        {
+          "id": "troubleshooting-upgrade-issues",
+          "heading": "3. Troubleshooting Common Upgrade Blockers",
+          "paragraphs": [
+            "If Windows Update fails with error codes such as 0x80070070 (insufficient disk space) or 0xC1900101 (driver conflict), run the built-in Windows Update Troubleshooter and temporarily disconnect external USB peripherals.",
+            "You can reset the Windows Update cache by stopping the update services, clearing the SoftwareDistribution folder, and restarting the service."
+          ],
+          "codeBlock": {
+            "language": "batch",
+            "filename": "reset-update-cache.cmd",
+            "code": "net stop wuauserv\nnet stop cryptSvc\nnet stop bits\nren C:\\Windows\\SoftwareDistribution SoftwareDistribution.old\nnet start wuauserv\nnet start cryptSvc\nnet start bits"
+          }
+        }
+      ],
+      "faqs": [
+        {
+          "question": "Will my computer stop working after Windows 11 24H2 support ends?",
+          "answer": "No, your computer will not suddenly shut down or stop functioning. However, it will no longer receive monthly cumulative security patches from Microsoft, leaving it vulnerable to new security threats."
+        },
+        {
+          "question": "Is upgrading to the next supported Windows 11 release free?",
+          "answer": "Yes. Feature updates for Windows 11 are completely free for all licensed Windows 11 users through Windows Update."
+        },
+        {
+          "question": "Will upgrading delete my files, games, or applications?",
+          "answer": "A standard in-place update through Windows Update or the official Update Assistant retains all of your personal files, desktop icons, browser bookmarks, and installed software."
+        }
+      ],
+      "author": {
+        "name": "Zee",
+        "role": "Systems & Web Performance Engineer",
+        "credentials": "Lead Editor & Systems Architect",
+        "bio": "Zee writes verified technical guides, system diagnostic manuals, and web optimization fixes.",
+        "avatarInitials": "Z",
+        "yearsExperience": 9,
+        "verifiedFixesPublished": 42
+      },
+      "tags": [
+        "Windows 11",
+        "24H2",
+        "End of Support",
+        "OS Upgrade",
+        "Security",
+        "How-To"
+      ],
+      "relatedSlugs": [],
+      "helpfulYes": 24,
+      "helpfulNo": 0
+    }
+  ],
   "settings": {
     "siteName": "Zee Writes",
     "siteUrl": "https://zeewrites.com",
@@ -10,6 +146,30 @@
     "gscVerification": "",
     "ga4Id": "",
     "cookieBannerEnabled": true,
-    "updatedAt": "2026-10-27T07:52:00.000Z"
-  }
+    "updatedAt": "2026-10-31T15:20:00.000Z"
+  },
+  "deletedIds": [
+    "art-01",
+    "art-02",
+    "art-03",
+    "art-04",
+    "art-05",
+    "art-06",
+    "art-07",
+    "art-08",
+    "art-09",
+    "art-10",
+    "fix-corrupted-utf8-text-mojibake-zero-width-characters",
+    "fix-err-ssl-protocol-error-dns-resolution-failures",
+    "clean-normalize-format-messy-pdf-copy-pasted-text",
+    "why-copy-pasted-code-breaks-smart-quotes-nbsp-sanitization",
+    "core-web-vitals-optimization-eliminate-cls-sub-second-lcp",
+    "mastering-regular-expressions-regex-text-search-cleanup",
+    "fix-high-ram-cpu-usage-modern-browsers-memory-leaks",
+    "markdown-formatting-masterclass-technical-documentation",
+    "resolve-git-line-ending-conflicts-crlf-lf-bom-errors",
+    "json-schema-validation-payload-minification-api-fixes",
+    "art-acceptance-test-1",
+    "how-to-fix-dns-latency-windows-11"
+  ]
 }

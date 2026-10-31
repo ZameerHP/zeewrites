@@ -36,6 +36,29 @@ interface SiteContextValue {
 const LOCAL_USER_ARTICLES_KEY = "zeewrites_user_articles_v2";
 const LOCAL_DELETED_IDS_KEY = "zeewrites_deleted_ids_v2";
 
+const SEED_SAMPLE_IDS = new Set([
+  "art-01",
+  "art-02",
+  "art-03",
+  "art-04",
+  "art-05",
+  "art-06",
+  "art-07",
+  "art-08",
+  "art-09",
+  "art-10",
+  "fix-corrupted-utf8-text-mojibake-zero-width-characters",
+  "fix-err-ssl-protocol-error-dns-resolution-failures",
+  "clean-normalize-format-messy-pdf-copy-pasted-text",
+  "why-copy-pasted-code-breaks-smart-quotes-nbsp-sanitization",
+  "core-web-vitals-optimization-eliminate-cls-sub-second-lcp",
+  "mastering-regular-expressions-regex-text-search-cleanup",
+  "fix-high-ram-cpu-usage-modern-browsers-memory-leaks",
+  "markdown-formatting-masterclass-technical-documentation",
+  "resolve-git-line-ending-conflicts-crlf-lf-bom-errors",
+  "json-schema-validation-payload-minification-api-fixes",
+]);
+
 function getLocalUserArticles(): Article[] {
   if (typeof window === "undefined") return [];
   try {
@@ -140,17 +163,30 @@ export function SiteProvider({
     setTheme("light");
     document.documentElement.classList.remove("dark");
 
-    const localUserArticles = getLocalUserArticles();
+    const localUserArticles = getLocalUserArticles().filter(
+      (a) => !SEED_SAMPLE_IDS.has(a.id) && !SEED_SAMPLE_IDS.has(a.slug)
+    );
+    try {
+      localStorage.setItem(LOCAL_USER_ARTICLES_KEY, JSON.stringify(localUserArticles));
+    } catch {
+      // ignore
+    }
     const deletedIds = getLocalDeletedIds();
     if (localUserArticles.length > 0) {
       setArticles((prev) => {
         const filtered = prev.filter(
-          (a) => !deletedIds.includes(a.id) && !deletedIds.includes(a.slug)
+          (a) =>
+            !deletedIds.includes(a.id) &&
+            !deletedIds.includes(a.slug) &&
+            !SEED_SAMPLE_IDS.has(a.id) &&
+            !SEED_SAMPLE_IDS.has(a.slug)
         );
         const missing = localUserArticles.filter(
           (u) =>
             !deletedIds.includes(u.id) &&
             !deletedIds.includes(u.slug) &&
+            !SEED_SAMPLE_IDS.has(u.id) &&
+            !SEED_SAMPLE_IDS.has(u.slug) &&
             !filtered.some((f) => f.id === u.id || f.slug === u.slug)
         );
         return missing.length > 0 ? [...missing, ...filtered] : filtered;
@@ -284,12 +320,18 @@ export function SiteProvider({
       if (res.ok) {
         const data = await res.json();
         const serverArticles: Article[] = Array.isArray(data.articles) ? data.articles : [];
-        const localUserArticles = getLocalUserArticles();
+        const localUserArticles = getLocalUserArticles().filter(
+          (a) => !SEED_SAMPLE_IDS.has(a.id) && !SEED_SAMPLE_IDS.has(a.slug)
+        );
         const deletedIds = getLocalDeletedIds();
 
         // 1. Filter out intentionally deleted articles
         let merged = serverArticles.filter(
-          (a) => !deletedIds.includes(a.id) && !deletedIds.includes(a.slug)
+          (a) =>
+            !deletedIds.includes(a.id) &&
+            !deletedIds.includes(a.slug) &&
+            !SEED_SAMPLE_IDS.has(a.id) &&
+            !SEED_SAMPLE_IDS.has(a.slug)
         );
 
         // 2. Auto-heal: If server restarted and lost /tmp data, restore from local storage
@@ -378,7 +420,11 @@ export function SiteProvider({
         if (Array.isArray(data.db?.articles)) {
           const deletedIds = getLocalDeletedIds();
           const clean = data.db.articles.filter(
-            (a: Article) => !deletedIds.includes(a.id) && !deletedIds.includes(a.slug)
+            (a: Article) =>
+              !deletedIds.includes(a.id) &&
+              !deletedIds.includes(a.slug) &&
+              !SEED_SAMPLE_IDS.has(a.id) &&
+              !SEED_SAMPLE_IDS.has(a.slug)
           );
           setArticles(clean);
         }
@@ -416,7 +462,11 @@ export function SiteProvider({
         if (Array.isArray(data.db?.articles)) {
           const deletedIds = getLocalDeletedIds();
           const clean = data.db.articles.filter(
-            (a: Article) => !deletedIds.includes(a.id) && !deletedIds.includes(a.slug)
+            (a: Article) =>
+              !deletedIds.includes(a.id) &&
+              !deletedIds.includes(a.slug) &&
+              !SEED_SAMPLE_IDS.has(a.id) &&
+              !SEED_SAMPLE_IDS.has(a.slug)
           );
           setArticles(clean);
         }
