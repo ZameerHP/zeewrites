@@ -18,6 +18,86 @@ import { AdSlot } from "@/components/ui/AdSlot";
 import { ArticleCard } from "@/components/ui/ArticleCard";
 import { ZeeMark } from "@/components/ui/ZeeLogo";
 
+/**
+ * Render text with inline markdown formatting:
+ * - [link text](url) -> Next.js Link (internal) or <a> (external)
+ * - `code` -> inline code badge
+ * - **bold** -> strong tag
+ * - *italic* -> em tag
+ */
+function renderFormattedText(text: string): React.ReactNode {
+  if (!text) return null;
+
+  const pattern = /\[([^\]]+)\]\(([^)]+)\)|`([^`]+)`|\*\*([^*]+)\*\*|\*([^*]+)\*/g;
+  const nodes: React.ReactNode[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  let keyIndex = 0;
+
+  while ((match = pattern.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      nodes.push(text.slice(lastIndex, match.index));
+    }
+
+    const [, linkText, linkUrl, codeText, boldText, italicText] = match;
+
+    if (linkText && linkUrl) {
+      const isInternal = linkUrl.startsWith("/") || linkUrl.startsWith("#");
+      const safeUrl = /^(https?:\/\/|\/|#|mailto:)/i.test(linkUrl)
+        ? linkUrl
+        : `https://${linkUrl}`;
+      if (isInternal) {
+        nodes.push(
+          <Link
+            key={`l-${keyIndex++}`}
+            href={safeUrl}
+            className="text-navy font-semibold underline underline-offset-2 hover:text-[#3a63de] transition-colors"
+          >
+            {linkText}
+          </Link>
+        );
+      } else {
+        nodes.push(
+          <a
+            key={`a-${keyIndex++}`}
+            href={safeUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-navy font-semibold underline underline-offset-2 hover:text-[#3a63de] transition-colors inline-flex items-center gap-0.5"
+          >
+            <span>{linkText}</span>
+          </a>
+        );
+      }
+    } else if (codeText) {
+      nodes.push(
+        <code
+          key={`c-${keyIndex++}`}
+          className="px-1.5 py-0.5 rounded-[6px] bg-badge-bg font-mono text-[14px] text-badge-text border border-hairline/60"
+        >
+          {codeText}
+        </code>
+      );
+    } else if (boldText) {
+      nodes.push(
+        <strong key={`b-${keyIndex++}`} className="font-semibold text-ink">
+          {boldText}
+        </strong>
+      );
+    } else if (italicText) {
+      nodes.push(<em key={`i-${keyIndex++}`}>{italicText}</em>);
+    }
+
+    lastIndex = pattern.lastIndex;
+  }
+
+  if (lastIndex < text.length) {
+    nodes.push(text.slice(lastIndex));
+  }
+
+  return nodes.length === 1 && typeof nodes[0] === "string" ? nodes[0] : <>{nodes}</>;
+}
+
 interface ArticleReaderViewProps {
   initialArticle: Article;
   slug: string;
@@ -219,7 +299,7 @@ export function ArticleReaderView({
                   Problem
                 </span>
                 <p className="text-ink mt-0.5">
-                  {article.verifiedTakeaway.symptom}
+                  {renderFormattedText(article.verifiedTakeaway.symptom)}
                 </p>
               </div>
               )}
@@ -229,7 +309,7 @@ export function ArticleReaderView({
                   Cause
                 </span>
                 <p className="text-ink mt-0.5">
-                  {article.verifiedTakeaway.rootCause}
+                  {renderFormattedText(article.verifiedTakeaway.rootCause)}
                 </p>
               </div>
               )}
@@ -239,7 +319,7 @@ export function ArticleReaderView({
                   Quick Fix
                 </span>
                 <p className="text-ink font-medium mt-0.5">
-                  {article.verifiedTakeaway.instantFix}
+                  {renderFormattedText(article.verifiedTakeaway.instantFix)}
                 </p>
               </div>
               )}
@@ -275,7 +355,7 @@ export function ArticleReaderView({
                       </div>
 
                       <p className="font-sans text-[18px] leading-[1.75] text-secondary">
-                        {step.text}
+                        {renderFormattedText(step.text)}
                       </p>
 
                       {step.commandOrCode && (
@@ -323,7 +403,7 @@ export function ArticleReaderView({
                           <strong className="font-semibold text-navy">
                             Tip:{" "}
                           </strong>
-                          <span>{step.proTip}</span>
+                          <span>{renderFormattedText(step.proTip)}</span>
                         </div>
                       )}
                     </div>
@@ -346,76 +426,210 @@ export function ArticleReaderView({
                   {section.heading}
                 </h2>
 
-                {section.paragraphs.map((p, pIdx) => (
-                  <p
-                    key={pIdx}
-                    className="font-sans text-[18px] leading-[1.75] text-secondary"
-                  >
-                    {p}
-                  </p>
-                ))}
+                {section.items && section.items.length > 0 ? (
+                  section.items.map((item, itemIdx) => {
+                    if (item.type === "paragraph") {
+                      return (
+                        <p
+                          key={itemIdx}
+                          className="font-sans text-[18px] leading-[1.75] text-secondary"
+                        >
+                          {renderFormattedText(item.text)}
+                        </p>
+                      );
+                    }
+                    if (item.type === "code") {
+                      const itemCodeKey = `${codeKey}-${itemIdx}`;
+                      return (
+                        <div
+                          key={itemIdx}
+                          className="rounded-[18px] bg-[#f1f5fe] dark:bg-[#0d152c] border border-hairline overflow-hidden"
+                        >
+                          <div className="px-4 py-2.5 border-b border-hairline flex items-center justify-between text-[13px] text-muted">
+                            <span className="font-medium">
+                              {item.filename || item.language || "code"}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                copyCommand(
+                                  item.code,
+                                  itemCodeKey,
+                                  "Code snippet copied to clipboard"
+                                )
+                              }
+                              className="inline-flex items-center gap-1.5 px-3 min-h-[34px] rounded-full bg-surface text-ink border border-hairline text-[13px] font-medium hover:text-navy transition-colors duration-micro"
+                            >
+                              {copiedKey === itemCodeKey ? (
+                                <>
+                                  <Check
+                                    className="w-3.5 h-3.5 text-navy"
+                                    strokeWidth={1.5}
+                                  />
+                                  <span>Copied</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Copy
+                                    className="w-3.5 h-3.5"
+                                    strokeWidth={1.5}
+                                  />
+                                  <span>Copy</span>
+                                </>
+                              )}
+                            </button>
+                          </div>
+                          <pre className="p-4 sm:p-5 font-mono text-[14px] leading-[1.65] overflow-x-auto text-ink">
+                            <code>{item.code}</code>
+                          </pre>
+                        </div>
+                      );
+                    }
+                    if (item.type === "callout") {
+                      return (
+                        <aside
+                          key={itemIdx}
+                          role="note"
+                          className="rounded-[18px] bg-badge-bg border border-hairline p-5 space-y-1.5"
+                        >
+                          <div className="font-sans font-semibold text-[16px] text-navy">
+                            {item.title}
+                          </div>
+                          <p className="text-[16px] text-secondary leading-[1.65]">
+                            {renderFormattedText(item.body)}
+                          </p>
+                        </aside>
+                      );
+                    }
+                    if (item.type === "subheading") {
+                      return (
+                        <h3
+                          key={itemIdx}
+                          className="font-sans font-medium text-[clamp(20px,2.4vw,26px)] text-ink tracking-[-0.015em] leading-[1.25] pt-2"
+                        >
+                          {item.title}
+                        </h3>
+                      );
+                    }
+                    return null;
+                  })
+                ) : (
+                  <>
+                    {section.paragraphs.map((p, pIdx) => (
+                      <p
+                        key={pIdx}
+                        className="font-sans text-[18px] leading-[1.75] text-secondary"
+                      >
+                        {renderFormattedText(p)}
+                      </p>
+                    ))}
 
-                {section.inlineImage && (
+                    {section.inlineImage && (
+                      <div className="rounded-[24px] bg-surface border border-hairline shadow-2 p-3">
+                        <TechnicalDiagram
+                          image={section.inlineImage}
+                          priority={false}
+                          showCaption={false}
+                        />
+                      </div>
+                    )}
+
+                    {section.callout && (
+                      <aside
+                        role="note"
+                        className="rounded-[18px] bg-badge-bg border border-hairline p-5 space-y-1.5"
+                      >
+                        <div className="font-sans font-semibold text-[16px] text-navy">
+                          {section.callout.title}
+                        </div>
+                        <p className="text-[16px] text-secondary leading-[1.65]">
+                          {renderFormattedText(section.callout.body)}
+                        </p>
+                      </aside>
+                    )}
+
+                    {section.codeBlock && (
+                      <div className="rounded-[18px] bg-[#f1f5fe] dark:bg-[#0d152c] border border-hairline overflow-hidden">
+                        <div className="px-4 py-2.5 border-b border-hairline flex items-center justify-between text-[13px] text-muted">
+                          <span className="font-medium">
+                            {section.codeBlock.filename ||
+                              section.codeBlock.language}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              copyCommand(
+                                section.codeBlock!.code,
+                                codeKey,
+                                "Code snippet copied to clipboard"
+                              )
+                            }
+                            className="inline-flex items-center gap-1.5 px-3 min-h-[34px] rounded-full bg-surface text-ink border border-hairline text-[13px] font-medium hover:text-navy transition-colors duration-micro"
+                          >
+                            {copiedKey === codeKey ? (
+                              <>
+                                <Check
+                                  className="w-3.5 h-3.5 text-navy"
+                                  strokeWidth={1.5}
+                                />
+                                <span>Copied</span>
+                              </>
+                            ) : (
+                              <>
+                                <Copy
+                                  className="w-3.5 h-3.5"
+                                  strokeWidth={1.5}
+                                />
+                                <span>Copy</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
+                        <pre className="p-4 sm:p-5 font-mono text-[14px] leading-[1.65] overflow-x-auto text-ink">
+                          <code>{section.codeBlock.code}</code>
+                        </pre>
+                      </div>
+                    )}
+
+                    {section.subheadings &&
+                      section.subheadings.map((sub, sIdx) => (
+                        <div key={sub.id || sIdx} className="space-y-4 pt-3">
+                          <h3 className="font-sans font-medium text-[clamp(20px,2.4vw,26px)] text-ink tracking-[-0.015em] leading-[1.25]">
+                            {sub.title}
+                          </h3>
+                          {sub.paragraphs.map((p, pIdx) => (
+                            <p
+                              key={pIdx}
+                              className="font-sans text-[18px] leading-[1.75] text-secondary"
+                            >
+                              {renderFormattedText(p)}
+                            </p>
+                          ))}
+                          {sub.codeBlock && (
+                            <div className="rounded-[18px] bg-[#f1f5fe] dark:bg-[#0d152c] border border-hairline overflow-hidden">
+                              <div className="px-4 py-2.5 border-b border-hairline flex items-center justify-between text-[13px] text-muted">
+                                <span className="font-medium">
+                                  {sub.codeBlock.filename ||
+                                    sub.codeBlock.language}
+                                </span>
+                              </div>
+                              <pre className="p-4 sm:p-5 font-mono text-[14px] leading-[1.65] overflow-x-auto text-ink">
+                                <code>{sub.codeBlock.code}</code>
+                              </pre>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                  </>
+                )}
+
+                {section.inlineImage && section.items && (
                   <div className="rounded-[24px] bg-surface border border-hairline shadow-2 p-3">
                     <TechnicalDiagram
                       image={section.inlineImage}
                       priority={false}
                       showCaption={false}
                     />
-                  </div>
-                )}
-
-                {section.callout && (
-                  <aside
-                    role="note"
-                    className="rounded-[18px] bg-badge-bg border border-hairline p-5 space-y-1.5"
-                  >
-                    <div className="font-sans font-semibold text-[16px] text-navy">
-                      {section.callout.title}
-                    </div>
-                    <p className="text-[16px] text-secondary leading-[1.65]">
-                      {section.callout.body}
-                    </p>
-                  </aside>
-                )}
-
-                {section.codeBlock && (
-                  <div className="rounded-[18px] bg-[#f1f5fe] dark:bg-[#0d152c] border border-hairline overflow-hidden">
-                    <div className="px-4 py-2.5 border-b border-hairline flex items-center justify-between text-[13px] text-muted">
-                      <span className="font-medium">
-                        {section.codeBlock.filename ||
-                          section.codeBlock.language}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          copyCommand(
-                            section.codeBlock!.code,
-                            codeKey,
-                            "Code snippet copied to clipboard"
-                          )
-                        }
-                        className="inline-flex items-center gap-1.5 px-3 min-h-[34px] rounded-full bg-surface text-ink border border-hairline text-[13px] font-medium hover:text-navy transition-colors duration-micro"
-                      >
-                        {copiedKey === codeKey ? (
-                          <>
-                            <Check
-                              className="w-3.5 h-3.5 text-navy"
-                              strokeWidth={1.5}
-                            />
-                            <span>Copied</span>
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="w-3.5 h-3.5" strokeWidth={1.5} />
-                            <span>Copy</span>
-                          </>
-                        )}
-                      </button>
-                    </div>
-                    <pre className="p-4 sm:p-5 font-mono text-[14px] leading-[1.65] overflow-x-auto text-ink">
-                      <code>{section.codeBlock.code}</code>
-                    </pre>
                   </div>
                 )}
 
@@ -504,7 +718,7 @@ export function ArticleReaderView({
                       </button>
                       {isOpen && (
                         <div className="px-5 pb-5 pt-1 text-[16px] text-secondary leading-[1.65] border-t border-hairline">
-                          {faq.answer}
+                          {renderFormattedText(faq.answer)}
                         </div>
                       )}
                     </div>

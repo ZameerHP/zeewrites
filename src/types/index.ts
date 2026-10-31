@@ -62,6 +62,12 @@ export interface ArticleTable {
   rows: string[][];
 }
 
+export type ArticleContentItem =
+  | { type: "paragraph"; text: string }
+  | { type: "code"; language: string; filename?: string; code: string }
+  | { type: "callout"; kind: "tip" | "warning" | "note" | "pro-tip"; title: string; body: string }
+  | { type: "subheading"; title: string };
+
 export interface ArticleSection {
   id: string;
   heading: string;
@@ -82,6 +88,7 @@ export interface ArticleSection {
     filename?: string;
     code: string;
   };
+  items?: ArticleContentItem[];
   table?: ArticleTable;
   inlineImage?: ArticleImage;
 }

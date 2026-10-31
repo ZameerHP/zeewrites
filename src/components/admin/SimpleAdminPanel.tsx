@@ -71,9 +71,10 @@ function countWords(text: string): number {
 /**
  * Convert the plain writing format into structured article sections.
  *   ## Heading         -> starts a new section
+ *   ### Subheading     -> starts a subsection
  *   blank line         -> new paragraph
  *   ```  ...  ```      -> code block
- *   > Tip: text        -> highlighted tip box
+ *   > Tip: text        -> highlighted tip/note/warning box
  */
 function contentToSections(content: string, fallbackHeading: string): ArticleSection[] {
   const lines = content.replace(/\r\n/g, "\n").split("\n");
@@ -90,125 +91,233 @@ function contentToSections(content: string, fallbackHeading: string): ArticleSec
   };
 
   let current: ArticleSection | null = null;
-  let paragraph: string[] = [];
+  let paragraphLines: string[] = [];
   let inCode = false;
   let codeLang = "";
   let codeLines: string[] = [];
 
   const ensureSection = () => {
     if (!current) {
-      current = { id: makeId(fallbackHeading), heading: fallbackHeading, paragraphs: [] };
+      current = {
+        id: makeId(fallbackHeading),
+        heading: fallbackHeading,
+        paragraphs: [],
+        items: [],
+      };
       sections.push(current);
     }
     return current;
   };
 
   const flushParagraph = () => {
-    const text = paragraph.join(" ").trim();
-    paragraph = [];
+    if (paragraphLines.length === 0) return;
+    const text = paragraphLines.join(" ").trim();
+    paragraphLines = [];
     if (!text) return;
+
     const sec = ensureSection();
-    const tip = text.match(/^>\s*(tip|note|warning)?\s*:?\s*(.*)$/i);
-    if (tip && text.startsWith(">")) {
-      const kind = (tip[1] || "tip").toLowerCase();
+    if (!sec.items) sec.items = [];
+
+    const tip = text.match(/^>\s*(tip|note|warning|pro-tip)?\s*:?\s*(.*)$/i);
+    if (text.startsWith(">") && tip) {
+      const rawKind = (tip[1] || "tip").toLowerCase();
+      const kind: "tip" | "warning" | "note" | "pro-tip" =
+        rawKind === "warning" ? "warning" : rawKind === "note" ? "note" : "tip";
+      const title =
+        kind === "warning" ? "Warning" : kind === "note" ? "Note" : "Tip";
       const body = tip[2].replace(/^>\s*/gm, "").trim();
+
+      sec.items.push({
+        type: "callout",
+        kind,
+        title,
+        body,
+      });
+
       if (!sec.callout) {
         sec.callout = {
           type: kind === "warning" ? "warning" : "pro-tip",
-          title: kind === "warning" ? "Warning" : kind === "note" ? "Note" : "Tip",
+          title,
           body,
         };
-        return;
       }
-      sec.paragraphs.push(body);
       return;
     }
+
     sec.paragraphs.push(text);
+    sec.items.push({
+      type: "paragraph",
+      text,
+    });
   };
 
-  for (const rawLine of lines) {
-    const line = rawLine;
+  for (let i = 0; i < lines.length; i++) {
+    const rawLine = lines[i];
 
     if (inCode) {
-      if (line.trim().startsWith("```")) {
+      if (rawLine.trim().startsWith("```")) {
         inCode = false;
-        let sec = ensureSection();
-        if (sec.codeBlock) {
-          // Only one code block per section; continue in a new section.
-          const next: ArticleSection = {
-            id: makeId(`${sec.heading} continued`),
-            heading: `${sec.heading} (continued)`,
-            paragraphs: [],
-          };
-          sections.push(next);
-          current = next;
-          sec = next;
+        const sec = ensureSection();
+        if (!sec.items) sec.items = [];
+        const codeContent = codeLines.join("\n");
+        const codeBlockObj = {
+          language: codeLang || "text",
+          code: codeContent,
+        };
+        sec.items.push({
+          type: "code",
+          ...codeBlockObj,
+        });
+        if (!sec.codeBlock) {
+          sec.codeBlock = codeBlockObj;
         }
-        sec.codeBlock = { language: codeLang || "text", code: codeLines.join("\n") };
         codeLines = [];
         codeLang = "";
       } else {
-        codeLines.push(line);
+        codeLines.push(rawLine);
       }
       continue;
     }
 
-    if (line.trim().startsWith("```")) {
+    if (rawLine.trim().startsWith("```")) {
       flushParagraph();
       inCode = true;
-      codeLang = line.trim().slice(3).trim();
+      codeLang = rawLine.trim().slice(3).trim();
       continue;
     }
 
-    const headingMatch = line.match(/^#{1,3}\s+(.+)$/);
-    if (headingMatch) {
+    // Callout / Blockquote line
+    if (rawLine.trim().startsWith(">")) {
+      if (paragraphLines.length > 0 && !paragraphLines[0].startsWith(">")) {
+        flushParagraph();
+      }
+      paragraphLines.push(rawLine.trim());
+      continue;
+    } else if (paragraphLines.length > 0 && paragraphLines[0].startsWith(">")) {
       flushParagraph();
-      const heading = headingMatch[1].trim();
-      current = { id: makeId(heading), heading, paragraphs: [] };
+    }
+
+    // Top-level section headings (# or ##)
+    const sectionHeadingMatch = rawLine.match(/^#{1,2}\s+(.+)$/);
+    if (sectionHeadingMatch) {
+      flushParagraph();
+      const heading = sectionHeadingMatch[1].trim();
+      current = {
+        id: makeId(heading),
+        heading,
+        paragraphs: [],
+        items: [],
+      };
       sections.push(current);
       continue;
     }
 
-    if (line.trim() === "") {
+    // Subheadings (### or ####)
+    const subHeadingMatch = rawLine.match(/^#{3,6}\s+(.+)$/);
+    if (subHeadingMatch) {
+      flushParagraph();
+      const title = subHeadingMatch[1].trim();
+      const sec = ensureSection();
+      if (!sec.items) sec.items = [];
+      sec.items.push({
+        type: "subheading",
+        title,
+      });
+      if (!sec.subheadings) sec.subheadings = [];
+      sec.subheadings.push({
+        id: makeId(title),
+        title,
+        paragraphs: [],
+      });
+      continue;
+    }
+
+    if (rawLine.trim() === "") {
       flushParagraph();
       continue;
     }
 
-    paragraph.push(line.trim());
+    paragraphLines.push(rawLine.trim());
   }
 
   if (inCode && codeLines.length) {
     const sec = ensureSection();
-    if (!sec.codeBlock) sec.codeBlock = { language: codeLang || "text", code: codeLines.join("\n") };
+    if (!sec.items) sec.items = [];
+    const codeBlockObj = {
+      language: codeLang || "text",
+      code: codeLines.join("\n"),
+    };
+    sec.items.push({
+      type: "code",
+      ...codeBlockObj,
+    });
+    if (!sec.codeBlock) {
+      sec.codeBlock = codeBlockObj;
+    }
   }
+
   flushParagraph();
 
-  return sections.filter(
-    (s) => s.paragraphs.length > 0 || s.codeBlock || s.callout
-  );
+  // Always keep sections with an explicit heading or real content
+  return sections.filter((s) => {
+    const hasExplicitHeading =
+      Boolean(s.heading) && s.heading.trim().length > 0 && s.heading !== fallbackHeading;
+    const hasContent =
+      s.paragraphs.length > 0 ||
+      s.codeBlock !== undefined ||
+      s.callout !== undefined ||
+      (s.items && s.items.length > 0) ||
+      (s.subheadings && s.subheadings.length > 0);
+    return hasExplicitHeading || hasContent;
+  });
 }
 
 function sectionsToContent(sections: ArticleSection[]): string {
   return sections
     .map((s) => {
-      const parts: string[] = [`## ${s.heading}`];
-      s.paragraphs.forEach((p) => parts.push(p));
-      if (s.subheadings) {
-        s.subheadings.forEach((sub) => {
-          parts.push(`### ${sub.title}`);
-          sub.paragraphs.forEach((p) => parts.push(p));
-          if (sub.codeBlock) {
-            parts.push("```" + sub.codeBlock.language + "\n" + sub.codeBlock.code + "\n```");
+      const parts: string[] = [];
+      if (s.heading && s.heading.trim()) {
+        parts.push(`## ${s.heading}`);
+      }
+
+      if (s.items && s.items.length > 0) {
+        s.items.forEach((item) => {
+          if (item.type === "paragraph") {
+            parts.push(item.text);
+          } else if (item.type === "code") {
+            parts.push("```" + (item.language || "") + "\n" + item.code + "\n```");
+          } else if (item.type === "callout") {
+            const label =
+              item.kind === "warning"
+                ? "Warning"
+                : item.kind === "note"
+                ? "Note"
+                : "Tip";
+            parts.push(`> ${label}: ${item.body}`);
+          } else if (item.type === "subheading") {
+            parts.push(`### ${item.title}`);
           }
         });
+      } else {
+        s.paragraphs.forEach((p) => parts.push(p));
+        if (s.subheadings) {
+          s.subheadings.forEach((sub) => {
+            parts.push(`### ${sub.title}`);
+            sub.paragraphs.forEach((p) => parts.push(p));
+            if (sub.codeBlock) {
+              parts.push("```" + sub.codeBlock.language + "\n" + sub.codeBlock.code + "\n```");
+            }
+          });
+        }
+        if (s.callout) {
+          const label = s.callout.type === "warning" ? "Warning" : "Tip";
+          parts.push(`> ${label}: ${s.callout.body}`);
+        }
+        if (s.codeBlock) {
+          parts.push("```" + s.codeBlock.language + "\n" + s.codeBlock.code + "\n```");
+        }
       }
-      if (s.callout) {
-        const label = s.callout.type === "warning" ? "Warning" : "Tip";
-        parts.push(`> ${label}: ${s.callout.body}`);
-      }
-      if (s.codeBlock) {
-        parts.push("```" + s.codeBlock.language + "\n" + s.codeBlock.code + "\n```");
-      }
+
       return parts.join("\n\n");
     })
     .join("\n\n");
@@ -395,7 +504,7 @@ export function SimpleAdminPanel({ onLock, onOpenAdvanced }: SimpleAdminPanelPro
     setTitle(a.title);
     setCategory(a.category);
     setSummary(a.excerpt);
-    setContent(sectionsToContent(a.sections));
+    setContent(a.rawMarkdown || sectionsToContent(a.sections));
     setSteps(a.howToSteps || []);
     setFaqs(a.faqs || []);
     const isUpload =
@@ -465,6 +574,69 @@ export function SimpleAdminPanel({ onLock, onOpenAdvanced }: SimpleAdminPanelPro
       el.focus();
       const pos = (before + pad + snippet).length;
       el.setSelectionRange(pos, pos);
+    });
+  };
+
+  const insertSnippet = (type: "heading" | "code" | "tip" | "link") => {
+    const el = contentRef.current;
+    if (!el) {
+      if (type === "heading") setContent((c) => (c ? `${c}\n\n## New heading\n\n` : `## New heading\n\n`));
+      else if (type === "code") setContent((c) => (c ? `${c}\n\n\`\`\`bash\n# Enter command or code\n\`\`\`\n\n` : `\`\`\`bash\n# Enter command or code\n\`\`\`\n\n`));
+      else if (type === "tip") setContent((c) => (c ? `${c}\n\n> Tip: Write your helpful tip here.\n\n` : `> Tip: Write your helpful tip here.\n\n`));
+      else if (type === "link") setContent((c) => (c ? `${c}\n\n[link text](https://example.com)` : `[link text](https://example.com)`));
+      return;
+    }
+
+    const start = el.selectionStart ?? content.length;
+    const end = el.selectionEnd ?? content.length;
+    const selected = content.slice(start, end).trim();
+    const before = content.slice(0, start);
+    const after = content.slice(end);
+
+    const needsPrefixNl = before.length > 0 && !before.endsWith("\n\n");
+    const pad = needsPrefixNl ? (before.endsWith("\n") ? "\n" : "\n\n") : "";
+
+    let insertText = "";
+    let selectOffsetStart = 0;
+    let selectOffsetEnd = 0;
+
+    if (type === "heading") {
+      const headingText = selected || "New heading";
+      insertText = `## ${headingText}\n\n`;
+      selectOffsetStart = pad.length + 3;
+      selectOffsetEnd = selectOffsetStart + headingText.length;
+    } else if (type === "code") {
+      const codeText = selected || "# Enter command or code";
+      insertText = `\`\`\`bash\n${codeText}\n\`\`\`\n\n`;
+      selectOffsetStart = pad.length + 8;
+      selectOffsetEnd = selectOffsetStart + codeText.length;
+    } else if (type === "tip") {
+      const tipText = selected || "Write your helpful tip here.";
+      insertText = `> Tip: ${tipText}\n\n`;
+      selectOffsetStart = pad.length + 7;
+      selectOffsetEnd = selectOffsetStart + tipText.length;
+    } else if (type === "link") {
+      if (selected.startsWith("http://") || selected.startsWith("https://") || selected.startsWith("/")) {
+        insertText = `[link text](${selected})`;
+        selectOffsetStart = pad.length + 1;
+        selectOffsetEnd = selectOffsetStart + "link text".length;
+      } else {
+        const linkLabel = selected || "link text";
+        const targetUrl = "https://example.com";
+        insertText = `[${linkLabel}](${targetUrl})`;
+        selectOffsetStart = pad.length + 1 + linkLabel.length + 2;
+        selectOffsetEnd = selectOffsetStart + targetUrl.length;
+      }
+    }
+
+    const next = `${before}${pad}${insertText}${after}`;
+    setContent(next);
+
+    requestAnimationFrame(() => {
+      el.focus();
+      const sStart = start + selectOffsetStart;
+      const sEnd = start + selectOffsetEnd;
+      el.setSelectionRange(sStart, sEnd);
     });
   };
 
@@ -567,6 +739,7 @@ export function SimpleAdminPanel({ onLock, onOpenAdvanced }: SimpleAdminPanelPro
       },
       howToSteps: cleanSteps,
       sections,
+      rawMarkdown: content,
       faqs: cleanFaqs,
       author: editing?.author || DEFAULT_AUTHOR,
       tags: tags
@@ -880,28 +1053,28 @@ export function SimpleAdminPanel({ onLock, onOpenAdvanced }: SimpleAdminPanelPro
               <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
-                  onClick={() => insertIntoContent("## New heading")}
+                  onClick={() => insertSnippet("heading")}
                   className="px-3 min-h-[34px] rounded-full border border-hairline text-[13px] text-ink hover:border-[#4a74f0]"
                 >
                   + Heading
                 </button>
                 <button
                   type="button"
-                  onClick={() => insertIntoContent("```\npaste command or code here\n```")}
+                  onClick={() => insertSnippet("code")}
                   className="px-3 min-h-[34px] rounded-full border border-hairline text-[13px] text-ink hover:border-[#4a74f0]"
                 >
                   + Code box
                 </button>
                 <button
                   type="button"
-                  onClick={() => insertIntoContent("> Tip: write a helpful tip here")}
+                  onClick={() => insertSnippet("tip")}
                   className="px-3 min-h-[34px] rounded-full border border-hairline text-[13px] text-ink hover:border-[#4a74f0]"
                 >
                   + Tip box
                 </button>
                 <button
                   type="button"
-                  onClick={() => insertIntoContent("[link text](/article/your-post-link)")}
+                  onClick={() => insertSnippet("link")}
                   className="px-3 min-h-[34px] rounded-full border border-hairline text-[13px] text-ink hover:border-[#4a74f0]"
                 >
                   + Link
