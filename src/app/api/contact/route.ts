@@ -128,7 +128,7 @@ export async function POST(req: NextRequest) {
 
     // 6. Send via Resend API
     const resendApiKey = process.env.RESEND_API_KEY;
-    const recipientEmail = process.env.CONTACT_RECEIVER_EMAIL || "zameerpanhwer67@gmail.com";
+    const recipientEmail = process.env.CONTACT_RECEIVER_EMAIL || "sanasindhi816@gmail.com";
     const fromEmail = process.env.RESEND_FROM_EMAIL || "Zee Writes <onboarding@resend.dev>";
 
     const safeName = escapeHtml(name);
