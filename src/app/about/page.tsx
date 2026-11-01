@@ -5,7 +5,7 @@ import { AboutBentoClient } from "@/components/about/AboutBentoClient";
 export const metadata: Metadata = {
   title: "About | Zee Writes",
   description:
-    "Zee Writes publishes practical guides and step-by-step tech fixes written by Zee.",
+    "Zee Writes publishes practical tech fixes, tested AI prompting methods, and browser-based text utilities written by Zee.",
   alternates: {
     canonical: "https://zeewrites.blog/about",
   },

@@ -3,10 +3,10 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import {
-  Terminal,
-  Globe,
-  Wifi,
+  Wrench,
+  Sparkles,
   FileCode2,
+  BookOpen,
   ArrowRight,
   Copy,
   Check,
@@ -16,45 +16,45 @@ import { ZeeMark } from "@/components/ui/ZeeLogo";
 
 const PILLARS = [
   {
-    id: "os",
-    title: "Operating Systems",
+    id: "how-to-fixes",
+    title: "Tech & OS Fixes",
     description:
-      "Clear command-line and settings fixes for everyday system errors.",
-    icon: Terminal,
+      "Step-by-step troubleshooting steps for Windows, OS settings, software errors, and updates.",
+    icon: Wrench,
     href: "/category/how-to-fixes",
   },
   {
-    id: "browser",
-    title: "Browser & Web",
+    id: "ai-prompts",
+    title: "AI Prompting Methods",
     description:
-      "Diagnosing high memory usage, rendering stalls, and cache conflicts.",
-    icon: Globe,
-    href: "/category/how-to-fixes",
+      "Tested, copy-paste prompts and workflow frameworks for ChatGPT, Claude, and Gemini.",
+    icon: Sparkles,
+    href: "/category/tutorials",
   },
   {
-    id: "network",
-    title: "Network & SSL",
+    id: "text-tools",
+    title: "Text & Productivity Tools",
     description:
-      "Resolving TLS handshake failures, DNS lookup stalls, and socket issues.",
-    icon: Wifi,
-    href: "/category/solutions",
-  },
-  {
-    id: "text",
-    title: "Text Formatting",
-    description:
-      "Fixing corrupted UTF-8 encoding, hidden characters, and line endings.",
+      "Handy browser utilities for clean text formatting, case conversions, and Markdown cleanup.",
     icon: FileCode2,
     href: "/category/text-guides",
+  },
+  {
+    id: "tutorials",
+    title: "Practical Tutorials",
+    description:
+      "Actionable, jargon-free guides that solve real computer problems without filler or bloat.",
+    icon: BookOpen,
+    href: "/category/solutions",
   },
 ];
 
 const PROCESS_STEPS = [
-  "Isolate",
-  "Diagnose",
-  "Resolve",
+  "Reproduce",
+  "Test Solution",
+  "Cut Fluff",
   "Document",
-  "Publish",
+  "Publish Free",
 ] as const;
 
 export function AboutBentoClient() {
@@ -92,9 +92,8 @@ export function AboutBentoClient() {
               About <span className="text-navy">Zee Writes</span>
             </h1>
 
-            <p className="mt-[20px] text-[18px] leading-[1.55] text-secondary max-w-[560px] mx-auto [text-wrap:balance]">
-              Direct, step-by-step technical guides and practical fixes written
-              without filler or unnecessary complexity.
+            <p className="mt-[20px] text-[18px] leading-[1.55] text-secondary max-w-[580px] mx-auto [text-wrap:balance]">
+              Practical tech fixes, tested AI prompting methods, and browser-based text utilities — written clearly without fluff.
             </p>
           </div>
         </div>
@@ -108,18 +107,19 @@ export function AboutBentoClient() {
             <div className="space-y-4">
               <div className="inline-flex items-center gap-2 h-[32px] px-[14px] rounded-full bg-surface border border-hairline shadow-1 text-[13px] font-medium text-ink">
                 <span className="w-[6px] h-[6px] rounded-full bg-accent" />
-                <span>What We Publish</span>
+                <span>Our Editorial Mission</span>
               </div>
 
               <h2 className="font-sans font-semibold text-[24px] sm:text-[28px] leading-[1.2] tracking-[-0.02em] text-ink">
-                Clear Fixes for Everyday Technical Problems
+                Clear Answers for Everyday Tech Problems
               </h2>
 
               <p className="text-[17px] leading-[1.65] text-secondary">
-                <strong className="text-ink font-semibold">Zee Writes</strong>{" "}
-                is an independent publication of step-by-step tech fixes and
-                practical guides built to help solve everyday operating system,
-                browser, network, and text formatting problems clearly.
+                <strong className="text-ink font-semibold">Zee Writes</strong> is an independent tech publication and utility hub. We publish straightforward, step-by-step solutions for everyday operating system errors, AI prompting strategies that actually work, and browser tools that make working with text faster.
+              </p>
+
+              <p className="text-[16px] leading-[1.65] text-secondary">
+                Every guide published here is tested before going live. No clickbait, no AI-generated filler, and no confusing jargon — just clean, actionable instructions you can follow in minutes.
               </p>
             </div>
 
@@ -161,15 +161,17 @@ export function AboutBentoClient() {
                     Written by Zee
                   </h2>
                   <p className="text-[14px] text-muted mt-0.5">
-                    Author &amp; Editor, Zee Writes
+                    Creator &amp; Author, Zee Writes
                   </p>
                 </div>
               </div>
 
               <p className="text-[17px] leading-[1.65] text-secondary">
-                Zee writes the guides on this site. Every article focuses on
-                clear, actionable steps without fluff. If you have a question,
-                correction, or suggestion, reach out directly any time.
+                Hi, I&apos;m Zee. I build text tools and write the guides on this site. I started Zee Writes because finding genuine, verified solutions to tech issues shouldn&apos;t require digging through ad-choked sites or outdated forums.
+              </p>
+
+              <p className="text-[16px] leading-[1.65] text-secondary">
+                Whether you need a quick Windows fix, want better results from AI chatbots, or need clean text formatting, I hope these resources help you.
               </p>
             </div>
 
@@ -218,13 +220,13 @@ export function AboutBentoClient() {
         <div className="space-y-2">
           <div className="inline-flex items-center gap-2 h-[32px] px-[14px] rounded-full bg-surface border border-hairline shadow-1 text-[13px] font-medium text-ink">
             <span className="w-[6px] h-[6px] rounded-full bg-accent" />
-            <span>Core coverage pillars</span>
+            <span>Topics &amp; Tools</span>
           </div>
           <h2
             id="core-pillars-heading"
             className="font-sans font-medium text-[clamp(24px,3.5vw,36px)] leading-[1.15] tracking-[-0.02em] text-ink"
           >
-            Topics Covered on <span className="text-navy">Zee Writes</span>
+            What You&apos;ll Find on <span className="text-navy">Zee Writes</span>
           </h2>
         </div>
 
