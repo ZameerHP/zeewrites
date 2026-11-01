@@ -518,12 +518,13 @@ export function SimpleAdminPanel({ onLock, onOpenAdvanced }: SimpleAdminPanelPro
     });
   };
 
-  const insertSnippet = (type: "heading" | "code" | "tip" | "link") => {
+  const insertSnippet = (type: "heading" | "code" | "tip" | "highlight" | "link") => {
     const el = contentRef.current;
     if (!el) {
       if (type === "heading") setContent((c) => (c ? `${c}\n\n## New heading\n\n` : `## New heading\n\n`));
       else if (type === "code") setContent((c) => (c ? `${c}\n\n\`\`\`bash\n# Enter command or code\n\`\`\`\n\n` : `\`\`\`bash\n# Enter command or code\n\`\`\`\n\n`));
       else if (type === "tip") setContent((c) => (c ? `${c}\n\n> Tip: Write your helpful tip here.\n\n` : `> Tip: Write your helpful tip here.\n\n`));
+      else if (type === "highlight") setContent((c) => (c ? `${c}\n\n> Key Takeaway: Enter key highlighted takeaway here.\n\n` : `> Key Takeaway: Enter key highlighted takeaway here.\n\n`));
       else if (type === "link") setContent((c) => (c ? `${c}\n\n[link text](https://example.com)` : `[link text](https://example.com)`));
       return;
     }
@@ -556,6 +557,17 @@ export function SimpleAdminPanel({ onLock, onOpenAdvanced }: SimpleAdminPanelPro
       insertText = `> Tip: ${tipText}\n\n`;
       selectOffsetStart = pad.length + 7;
       selectOffsetEnd = selectOffsetStart + tipText.length;
+    } else if (type === "highlight") {
+      if (selected && !selected.includes("\n")) {
+        insertText = `==${selected}==`;
+        selectOffsetStart = pad.length;
+        selectOffsetEnd = selectOffsetStart + insertText.length;
+      } else {
+        const hlText = selected || "Key takeaway or important note to highlight.";
+        insertText = `> Key Takeaway: ${hlText}\n\n`;
+        selectOffsetStart = pad.length + 16;
+        selectOffsetEnd = selectOffsetStart + hlText.length;
+      }
     } else if (type === "link") {
       if (selected.startsWith("http://") || selected.startsWith("https://") || selected.startsWith("/")) {
         insertText = `[link text](${selected})`;
@@ -1045,6 +1057,13 @@ export function SimpleAdminPanel({ onLock, onOpenAdvanced }: SimpleAdminPanelPro
                     className="px-3 min-h-[34px] rounded-full border border-hairline text-[13px] text-ink hover:border-[#4a74f0] transition-colors"
                   >
                     + Tip box
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => insertSnippet("highlight")}
+                    className="px-3 min-h-[34px] rounded-full border border-hairline text-[13px] text-ink hover:border-[#4a74f0] transition-colors"
+                  >
+                    + Highlight
                   </button>
                   <button
                     type="button"

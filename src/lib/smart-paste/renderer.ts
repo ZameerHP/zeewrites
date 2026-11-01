@@ -38,6 +38,8 @@ export function blocksToMarkdown(blocks: ArticleBlock[]): string {
             ? "Note"
             : block.calloutType === "important"
             ? "Important"
+            : block.calloutType === "highlight"
+            ? (block.title || "Key Takeaway")
             : "Tip";
         parts.push(`> ${label}: ${block.body || ""}`);
         break;

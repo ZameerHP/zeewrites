@@ -24,6 +24,66 @@ interface SmartArticlePreviewProps {
   onUpdateBlocks: (updatedBlocks: ArticleBlock[]) => void;
 }
 
+function renderPreviewFormattedText(text: string): React.ReactNode {
+  if (!text) return null;
+  const pattern = /\[([^\]]+)\]\(([^)]+)\)|`([^`]+)`|\*\*([^*]+)\*\*|\*([^*]+)\*|==([^=]+)==|<mark>([^<]+)<\/mark>/g;
+  const nodes: React.ReactNode[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  let keyIndex = 0;
+
+  while ((match = pattern.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      nodes.push(text.slice(lastIndex, match.index));
+    }
+
+    const [, linkText, linkUrl, codeText, boldText, italicText, highlight1, highlight2] = match;
+    const highlightText = highlight1 || highlight2;
+
+    if (linkText && linkUrl) {
+      nodes.push(
+        <span key={`l-${keyIndex++}`} className="text-[#4a74f0] underline underline-offset-2">
+          {linkText}
+        </span>
+      );
+    } else if (codeText) {
+      nodes.push(
+        <code
+          key={`c-${keyIndex++}`}
+          className="font-mono text-[0.88em] px-1.5 py-0.5 rounded-[6px] bg-[#f1f5fe] dark:bg-[#16203a] text-navy dark:text-accent border border-hairline"
+        >
+          {codeText}
+        </code>
+      );
+    } else if (boldText) {
+      nodes.push(
+        <strong key={`b-${keyIndex++}`} className="font-bold text-ink">
+          {boldText}
+        </strong>
+      );
+    } else if (italicText) {
+      nodes.push(<em key={`i-${keyIndex++}`}>{italicText}</em>);
+    } else if (highlightText) {
+      nodes.push(
+        <mark
+          key={`m-${keyIndex++}`}
+          className="px-1.5 py-0.5 rounded-[5px] bg-[#fef08a] dark:bg-[#ca8a04]/30 text-ink font-semibold border border-[#fde047] dark:border-[#ca8a04]/40"
+        >
+          {highlightText}
+        </mark>
+      );
+    }
+
+    lastIndex = pattern.lastIndex;
+  }
+
+  if (lastIndex < text.length) {
+    nodes.push(text.slice(lastIndex));
+  }
+
+  return nodes.length > 0 ? nodes : text;
+}
+
 export function SmartArticlePreview({ blocks, onUpdateBlocks }: SmartArticlePreviewProps) {
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -34,7 +94,12 @@ export function SmartArticlePreview({ blocks, onUpdateBlocks }: SmartArticlePrev
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  const changeBlockType = (blockId: string, newType: ArticleBlockType, level?: 1 | 2 | 3 | 4, calloutType?: "tip" | "note" | "warning" | "important") => {
+  const changeBlockType = (
+    blockId: string,
+    newType: ArticleBlockType,
+    level?: 1 | 2 | 3 | 4,
+    calloutType?: "tip" | "note" | "warning" | "important" | "highlight"
+  ) => {
     const updated: ArticleBlock[] = blocks.map((b): ArticleBlock => {
       if (b.id !== blockId) return b;
 
@@ -61,11 +126,22 @@ export function SmartArticlePreview({ blocks, onUpdateBlocks }: SmartArticlePrev
       }
 
       if (newType === "callout") {
+        const cType = calloutType || "tip";
+        const title =
+          cType === "highlight"
+            ? "Key Takeaway"
+            : cType === "warning"
+            ? "Warning"
+            : cType === "important"
+            ? "Important"
+            : cType === "note"
+            ? "Note"
+            : "Tip";
         return {
           ...b,
           type: "callout" as const,
-          calloutType: calloutType || "tip",
-          title: calloutType === "warning" ? "Warning" : calloutType === "note" ? "Note" : "Tip",
+          calloutType: cType,
+          title,
           body: baseText,
           confidence: "high" as const,
         };
@@ -166,8 +242,12 @@ export function SmartArticlePreview({ blocks, onUpdateBlocks }: SmartArticlePrev
                   )}
                   {block.type === "callout" && (
                     <>
-                      <Lightbulb className="w-3 h-3 text-amber-600" />
-                      <span className="capitalize">{block.calloutType || "Tip"} Box</span>
+                      {block.calloutType === "highlight" ? (
+                        <Sparkles className="w-3 h-3 text-amber-500" />
+                      ) : (
+                        <Lightbulb className="w-3 h-3 text-amber-600" />
+                      )}
+                      <span className="capitalize">{block.calloutType === "highlight" ? "Highlight Box" : `${block.calloutType || "Tip"} Box`}</span>
                     </>
                   )}
                   {block.type === "list" && (
@@ -227,6 +307,13 @@ export function SmartArticlePreview({ blocks, onUpdateBlocks }: SmartArticlePrev
                     </button>
                     <button
                       type="button"
+                      onClick={() => changeBlockType(block.id, "callout", undefined, "highlight")}
+                      className="w-full text-left px-3 py-1.5 hover:bg-page flex items-center gap-2 text-ink"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-amber-500" /> Highlight Box
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => changeBlockType(block.id, "callout", undefined, "tip")}
                       className="w-full text-left px-3 py-1.5 hover:bg-page flex items-center gap-2 text-ink"
                     >
@@ -267,19 +354,19 @@ export function SmartArticlePreview({ blocks, onUpdateBlocks }: SmartArticlePrev
             {/* Block Body Rendering */}
             {block.type === "heading" && (
               block.level === 3 ? (
-                <h3 className="font-sans font-medium text-[22px] sm:text-[24px] text-ink tracking-[-0.015em] leading-[1.25]">
-                  {block.text}
+                <h3 className="font-sans font-bold text-[22px] sm:text-[25px] text-ink tracking-[-0.015em] leading-[1.25] pt-1">
+                  {renderPreviewFormattedText(block.text || "")}
                 </h3>
               ) : (
-                <h2 className="font-sans font-medium text-[26px] sm:text-[30px] text-ink tracking-[-0.02em] leading-[1.2]">
-                  {block.text}
+                <h2 className="font-sans font-bold text-[28px] sm:text-[34px] text-ink tracking-[-0.025em] leading-[1.18] pt-2">
+                  {renderPreviewFormattedText(block.text || "")}
                 </h2>
               )
             )}
 
             {block.type === "paragraph" && (
               <p className="font-sans text-[17px] sm:text-[18px] leading-[1.75] text-secondary">
-                {block.text}
+                {renderPreviewFormattedText(block.text || "")}
               </p>
             )}
 
@@ -309,38 +396,53 @@ export function SmartArticlePreview({ blocks, onUpdateBlocks }: SmartArticlePrev
               </div>
             )}
 
-            {block.type === "callout" && (
-              <aside
-                role="note"
-                className={`rounded-[16px] border p-4 sm:p-5 space-y-1.5 ${
-                  block.calloutType === "warning"
-                    ? "bg-amber-50/70 border-amber-200 dark:bg-amber-950/30 dark:border-amber-800/60"
-                    : block.calloutType === "note"
-                    ? "bg-blue-50/70 border-blue-200 dark:bg-blue-950/30 dark:border-blue-800/60"
-                    : "bg-badge-bg border-hairline"
-                }`}
-              >
-                <div className="font-sans font-semibold text-[15px] sm:text-[16px] text-navy dark:text-accent flex items-center gap-1.5">
-                  <Lightbulb className="w-4 h-4 shrink-0" />
-                  <span>{block.title || "Tip"}</span>
-                </div>
-                <p className="text-[15px] sm:text-[16px] text-secondary leading-[1.65]">
-                  {block.body}
-                </p>
-              </aside>
-            )}
+            {block.type === "callout" && (() => {
+              const isHighlight =
+                block.calloutType === "highlight" ||
+                /takeaway|highlight|tl;?dr|remember|important|key point|core concept/i.test(block.title || "");
+              return (
+                <aside
+                  role="note"
+                  className={`rounded-[16px] border p-4 sm:p-5 space-y-1.5 ${
+                    isHighlight
+                      ? "bg-[#fef9c3]/50 dark:bg-[#ca8a04]/15 border-2 border-[#facc15]/80 dark:border-[#ca8a04]/50 shadow-sm"
+                      : block.calloutType === "warning"
+                      ? "bg-amber-50/70 border-amber-200 dark:bg-amber-950/30 dark:border-amber-800/60"
+                      : block.calloutType === "note"
+                      ? "bg-blue-50/70 border-blue-200 dark:bg-blue-950/30 dark:border-blue-800/60"
+                      : "bg-badge-bg border-hairline"
+                  }`}
+                >
+                  <div
+                    className={`font-sans font-bold text-[15px] sm:text-[16px] flex items-center gap-1.5 ${
+                      isHighlight ? "text-amber-800 dark:text-amber-300" : "text-navy dark:text-accent"
+                    }`}
+                  >
+                    {isHighlight ? (
+                      <Sparkles className="w-4 h-4 shrink-0 text-amber-500" />
+                    ) : (
+                      <Lightbulb className="w-4 h-4 shrink-0" />
+                    )}
+                    <span>{block.title || (isHighlight ? "Key Takeaway" : "Tip")}</span>
+                  </div>
+                  <p className="text-[15px] sm:text-[16px] text-ink leading-[1.65]">
+                    {renderPreviewFormattedText(block.body || "")}
+                  </p>
+                </aside>
+              );
+            })()}
 
             {block.type === "list" && (
               block.ordered ? (
                 <ol className="space-y-2 pl-5 list-decimal text-secondary text-[16px] sm:text-[17px] leading-[1.75]">
                   {block.items?.map((it, idx) => (
-                    <li key={idx}>{it}</li>
+                    <li key={idx}>{renderPreviewFormattedText(it)}</li>
                   ))}
                 </ol>
               ) : (
                 <ul className="space-y-2 pl-5 list-disc text-secondary text-[16px] sm:text-[17px] leading-[1.75]">
                   {block.items?.map((it, idx) => (
-                    <li key={idx}>{it}</li>
+                    <li key={idx}>{renderPreviewFormattedText(it)}</li>
                   ))}
                 </ul>
               )

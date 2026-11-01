@@ -128,14 +128,18 @@ function isStandaloneHeadingCandidate(line: string, prevBlank: boolean, nextBlan
 }
 
 /**
- * Extract Callout info from text.
+ * Extract Callout / Highlight box info from text.
+ * Auto-detects lines starting with:
+ * - Highlight: / Key Takeaway: / Takeaway: / TL;DR: / Remember: / Core Concept: / Key Point:
+ * - Tip: / Note: / Warning: / Important: / Pro-Tip: / Caution:
+ * With or without markdown bold asterisks `**...**` or blockquote `>`.
  */
-function extractCallout(text: string): { type: "tip" | "note" | "warning" | "important"; title: string; body: string } | null {
-  const m = text.match(/^(?:>\s*)?(Note|Tip|Warning|Important|Pro-Tip|Caution)\s*[:\-]\s*(.+)$/i);
+function extractCallout(text: string): { type: "tip" | "note" | "warning" | "important" | "highlight"; title: string; body: string } | null {
+  const m = text.match(/^(?:>\s*)?(?:\*\*)?(Note|Tip|Warning|Important|Pro-Tip|Caution|Highlight|Key Takeaway|Takeaway|TL;DR|Remember|Core Concept|Key Point)(?:\*\*)?\s*[:\-]\s*(.+)$/i);
   if (!m) return null;
 
   const rawKind = m[1].toLowerCase();
-  let type: "tip" | "note" | "warning" | "important" = "tip";
+  let type: "tip" | "note" | "warning" | "important" | "highlight" = "tip";
   let title = "Tip";
 
   if (rawKind === "warning" || rawKind === "caution") {
@@ -147,6 +151,24 @@ function extractCallout(text: string): { type: "tip" | "note" | "warning" | "imp
   } else if (rawKind === "important") {
     type = "important";
     title = "Important";
+  } else if (
+    rawKind === "highlight" ||
+    rawKind === "key takeaway" ||
+    rawKind === "takeaway" ||
+    rawKind === "tl;dr" ||
+    rawKind === "remember" ||
+    rawKind === "core concept" ||
+    rawKind === "key point"
+  ) {
+    type = "highlight";
+    title =
+      rawKind === "tl;dr"
+        ? "TL;DR"
+        : rawKind === "remember"
+        ? "Remember"
+        : rawKind === "highlight"
+        ? "Highlight"
+        : "Key Takeaway";
   } else {
     type = "tip";
     title = "Pro Tip";
@@ -303,7 +325,22 @@ export function parseArticle(rawText: string, optionalHtml?: string): ParsedArti
       continue;
     }
 
-    // 5. Standalone Heading Candidate (Title Case, Step prefix, or bold-only line)
+    // 5. Callouts & Highlights (Highlight:, Key Takeaway:, Tip:, Note:, Warning:, Important:)
+    const callout = extractCallout(trimmed);
+    if (callout) {
+      blocks.push({
+        id: nextId("callout"),
+        type: "callout",
+        calloutType: callout.type,
+        title: callout.title,
+        body: enrichInlineCode(toCurlyQuotes(callout.body)),
+        confidence: "high",
+      });
+      i++;
+      continue;
+    }
+
+    // 6. Standalone Heading Candidate (Title Case, Step prefix, or bold-only line)
     const prevBlank = i === 0 || filteredLines[i - 1].trim() === "";
     const nextBlank = i + 1 >= filteredLines.length || filteredLines[i + 1].trim() === "";
 
@@ -316,8 +353,9 @@ export function parseArticle(rawText: string, optionalHtml?: string): ParsedArti
       if (!detectedTitle && blocks.length === 0) {
         detectedTitle = hText;
       } else {
-        // Steps / Sub-methods default to H3, major sections default to H2
-        const isSub = /^(Step|Method|Fix|Part|Option)\s+\d+/i.test(hText) || blocks.some((b) => b.type === "heading" && b.level === 2);
+        // Steps, sub-methods, or numbered decimals default to H3 (Subheading);
+        // Major topics, title case sections, ALL CAPS headings, and bold lines default to H2 (Big Header)!
+        const isSub = /^(Step|Method|Fix|Option|Part)\s+\d+[:\s]/i.test(hText) || /^\d+\.\d+\s+/.test(hText);
         const level: 2 | 3 = isSub ? 3 : 2;
 
         blocks.push({
@@ -328,21 +366,6 @@ export function parseArticle(rawText: string, optionalHtml?: string): ParsedArti
           confidence: "high",
         });
       }
-      i++;
-      continue;
-    }
-
-    // 6. Callouts (Tip:, Note:, Warning:, Important:)
-    const callout = extractCallout(trimmed);
-    if (callout) {
-      blocks.push({
-        id: nextId("callout"),
-        type: "callout",
-        calloutType: callout.type,
-        title: callout.title,
-        body: enrichInlineCode(toCurlyQuotes(callout.body)),
-        confidence: "high",
-      });
       i++;
       continue;
     }

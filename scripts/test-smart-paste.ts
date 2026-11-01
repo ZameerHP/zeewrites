@@ -261,6 +261,64 @@ You can also use <div role="button"> with proper keyboard event listeners.
   console.log("  ✓ PASS: HTML tags inside code blocks and prose are preserved safely without execution");
 }
 
+// TEST CASE 7B: Big Header Auto-Detection and Highlight Text Auto-Detection
+console.log("\n--- TEST 7B: Big Header Auto-Detection & Highlight / Key Takeaway Blocks ---");
+{
+  const input = `
+Complete Guide to System Optimization
+
+Understanding CPU Bottlenecks
+
+CPU bottlenecks happen when threads get stuck waiting on processor cycles.
+
+Key Takeaway: Profiling CPU flame graphs before modifying thread pools prevents premature optimization.
+
+Step 1: Check Thread Latency
+
+Inspect thread execution frequency across all worker pools.
+
+Step 2: Terminate Redundant Workers
+
+Kill zombie processes before rebooting.
+
+Diagnosing Memory Leaks
+
+Memory leaks occur when references prevent garbage collection.
+
+Highlight: Always verify heap dumps with an automated analysis tool.
+
+Step 1: Capture Heap Dump
+
+Generate a core dump immediately after abnormal memory spikes.
+
+TL;DR: Do not restart services before capturing memory snapshots.
+`;
+
+  const parsed = parseArticle(input);
+  assert.strictEqual(parsed.title, "Complete Guide to System Optimization", "First line is title");
+
+  // Verify Big Headers (H2) are auto-detected for both major sections
+  const h2s = parsed.blocks.filter((b) => b.type === "heading" && b.level === 2);
+  const h2Texts = h2s.map((h) => h.text);
+  assert(h2Texts.includes("Understanding CPU Bottlenecks"), "First major section is H2 Big Header");
+  assert(h2Texts.includes("Diagnosing Memory Leaks"), "Second major section is ALSO H2 Big Header, NOT demoted to H3");
+
+  // Verify Steps are detected as H3 Subheadings
+  const h3s = parsed.blocks.filter((b) => b.type === "heading" && b.level === 3);
+  const h3Texts = h3s.map((h) => h.text);
+  assert(h3Texts.some((t) => t?.includes("Step 1")), "Steps are detected as H3");
+
+  // Verify Callouts / Highlights
+  const callouts = parsed.blocks.filter((b) => b.type === "callout");
+  assert.strictEqual(callouts.length, 3, "Three callouts detected");
+  assert.strictEqual(callouts[0].calloutType, "highlight", "Key Takeaway detected as highlight");
+  assert.strictEqual(callouts[0].title, "Key Takeaway", "Callout title matches");
+  assert.strictEqual(callouts[1].calloutType, "highlight", "Highlight detected as highlight callout");
+  assert.strictEqual(callouts[2].calloutType, "highlight", "TL;DR detected as highlight callout");
+
+  console.log("  ✓ PASS: Multiple major sections auto-detected as H2 Big Headers, and Takeaways/Highlights auto-detected");
+}
+
 // PERFORMANCE TEST: 15,000+ words
 console.log("\n--- TEST 8: Performance Benchmark (15,000+ words) ---");
 {

@@ -17,7 +17,7 @@ export interface ArticleBlock {
   code?: string;
   items?: string[];
   ordered?: boolean;
-  calloutType?: "tip" | "note" | "warning" | "important";
+  calloutType?: "tip" | "note" | "warning" | "important" | "highlight";
   title?: string;
   body?: string;
   headers?: string[];

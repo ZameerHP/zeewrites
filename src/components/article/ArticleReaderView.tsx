@@ -24,11 +24,12 @@ import { ZeeMark } from "@/components/ui/ZeeLogo";
  * - `code` -> inline code badge
  * - **bold** -> strong tag
  * - *italic* -> em tag
+ * - ==highlight== or <mark>highlight</mark> -> styled highlight badge
  */
 function renderFormattedText(text: string): React.ReactNode {
   if (!text) return null;
 
-  const pattern = /\[([^\]]+)\]\(([^)]+)\)|`([^`]+)`|\*\*([^*]+)\*\*|\*([^*]+)\*/g;
+  const pattern = /\[([^\]]+)\]\(([^)]+)\)|`([^`]+)`|\*\*([^*]+)\*\*|\*([^*]+)\*|==([^=]+)==|<mark>([^<]+)<\/mark>/g;
   const nodes: React.ReactNode[] = [];
   let lastIndex = 0;
   let match: RegExpExecArray | null;
@@ -39,7 +40,8 @@ function renderFormattedText(text: string): React.ReactNode {
       nodes.push(text.slice(lastIndex, match.index));
     }
 
-    const [, linkText, linkUrl, codeText, boldText, italicText] = match;
+    const [, linkText, linkUrl, codeText, boldText, italicText, highlight1, highlight2] = match;
+    const highlightText = highlight1 || highlight2;
 
     if (linkText && linkUrl) {
       const isInternal = linkUrl.startsWith("/") || linkUrl.startsWith("#");
@@ -80,12 +82,21 @@ function renderFormattedText(text: string): React.ReactNode {
       );
     } else if (boldText) {
       nodes.push(
-        <strong key={`b-${keyIndex++}`} className="font-semibold text-ink">
+        <strong key={`b-${keyIndex++}`} className="font-bold text-ink">
           {boldText}
         </strong>
       );
     } else if (italicText) {
       nodes.push(<em key={`i-${keyIndex++}`}>{italicText}</em>);
+    } else if (highlightText) {
+      nodes.push(
+        <mark
+          key={`m-${keyIndex++}`}
+          className="px-1.5 py-0.5 rounded-[5px] bg-[#fef08a] dark:bg-[#ca8a04]/30 text-ink font-semibold border border-[#fde047] dark:border-[#ca8a04]/40"
+        >
+          {highlightText}
+        </mark>
+      );
     }
 
     lastIndex = pattern.lastIndex;
@@ -525,7 +536,7 @@ export function ArticleReaderView({
                 id={section.id}
                 className="space-y-5 pt-4 max-w-[68ch]"
               >
-                <h2 className="font-sans font-medium text-[clamp(24px,3.2vw,34px)] text-ink tracking-[-0.02em] leading-[1.18]">
+                <h2 className="font-sans font-bold text-[clamp(26px,3.5vw,36px)] text-ink tracking-[-0.025em] leading-[1.15] pt-3">
                   {section.heading}
                 </h2>
 
@@ -582,16 +593,22 @@ export function ArticleReaderView({
                       );
                     }
                     if (item.type === "callout") {
+                      const isHighlight = /takeaway|highlight|tl;?dr|remember|important|key point|core concept/i.test(item.title);
                       return (
                         <aside
                           key={itemIdx}
                           role="note"
-                          className="rounded-[18px] bg-badge-bg border border-hairline p-5 space-y-1.5"
+                          className={`rounded-[18px] p-5 space-y-1.5 ${
+                            isHighlight
+                              ? "bg-[#fef9c3]/40 dark:bg-[#ca8a04]/15 border-2 border-[#facc15]/80 dark:border-[#ca8a04]/50 shadow-sm"
+                              : "bg-badge-bg border border-hairline"
+                          }`}
                         >
-                          <div className="font-sans font-semibold text-[16px] text-navy">
+                          <div className={`font-sans font-bold text-[16px] ${isHighlight ? "text-amber-800 dark:text-amber-300 flex items-center gap-2" : "text-navy"}`}>
+                            {isHighlight && <span className="inline-block w-2 h-2 rounded-full bg-amber-500 animate-pulse" />}
                             {item.title}
                           </div>
-                          <p className="text-[16px] text-secondary leading-[1.65]">
+                          <p className="text-[16px] text-ink leading-[1.65]">
                             {renderFormattedText(item.body)}
                           </p>
                         </aside>
@@ -601,7 +618,7 @@ export function ArticleReaderView({
                       return (
                         <h3
                           key={itemIdx}
-                          className="font-sans font-medium text-[clamp(20px,2.4vw,26px)] text-ink tracking-[-0.015em] leading-[1.25] pt-2"
+                          className="font-sans font-bold text-[clamp(20px,2.5vw,26px)] text-ink tracking-[-0.015em] leading-[1.25] pt-2"
                         >
                           {item.title}
                         </h3>
@@ -625,19 +642,27 @@ export function ArticleReaderView({
                       </div>
                     )}
 
-                    {section.callout && (
-                      <aside
-                        role="note"
-                        className="rounded-[18px] bg-badge-bg border border-hairline p-5 space-y-1.5"
-                      >
-                        <div className="font-sans font-semibold text-[16px] text-navy">
-                          {section.callout.title}
-                        </div>
-                        <p className="text-[16px] text-secondary leading-[1.65]">
-                          {renderFormattedText(section.callout.body)}
-                        </p>
-                      </aside>
-                    )}
+                    {section.callout && (() => {
+                      const isHighlight = /takeaway|highlight|tl;?dr|remember|important|key point|core concept/i.test(section.callout.title);
+                      return (
+                        <aside
+                          role="note"
+                          className={`rounded-[18px] p-5 space-y-1.5 ${
+                            isHighlight
+                              ? "bg-[#fef9c3]/40 dark:bg-[#ca8a04]/15 border-2 border-[#facc15]/80 dark:border-[#ca8a04]/50 shadow-sm"
+                              : "bg-badge-bg border border-hairline"
+                          }`}
+                        >
+                          <div className={`font-sans font-bold text-[16px] ${isHighlight ? "text-amber-800 dark:text-amber-300 flex items-center gap-2" : "text-navy"}`}>
+                            {isHighlight && <span className="inline-block w-2 h-2 rounded-full bg-amber-500 animate-pulse" />}
+                            {section.callout.title}
+                          </div>
+                          <p className="text-[16px] text-ink leading-[1.65]">
+                            {renderFormattedText(section.callout.body)}
+                          </p>
+                        </aside>
+                      );
+                    })()}
 
                     {section.codeBlock && (
                       <div className="rounded-[18px] bg-[#f1f5fe] dark:bg-[#0d152c] border border-hairline overflow-hidden">
