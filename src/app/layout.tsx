@@ -89,6 +89,9 @@ export default async function RootLayout({
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: LIGHT_MODE_INIT_SCRIPT }} />
+        {settings.gscVerification && (
+          <meta name="google-site-verification" content={settings.gscVerification} />
+        )}
       </head>
       <body className="font-sans antialiased bg-page text-ink">
         <SiteProvider initialArticles={publishedArticles} initialSettings={settings}>
