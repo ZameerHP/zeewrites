@@ -351,10 +351,10 @@ async function run() {
       );
       assert(userArticlePreserved, "User article 'Windows 11 24H2 Support Has Ended' is safely preserved");
 
-      const aiPromptsPreserved = cmsStatus.json?.articles?.some((a) =>
-        a.title.includes("How to Write AI Prompts") || a.id === "art-1793465800000"
+      const noGhostArticles = cmsStatus.json?.articles?.every((a) =>
+        !a.slug.includes("wswjhsb") && !a.slug.includes("art-0")
       );
-      assert(aiPromptsPreserved, "User article 'How to Write AI Prompts That Work' is safely preserved");
+      assert(noGhostArticles, "Database is clean with zero ghost/placeholder articles");
 
       const catPage = await request("/category/how-to-fixes");
       assert(

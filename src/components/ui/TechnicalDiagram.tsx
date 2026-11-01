@@ -25,7 +25,8 @@ export function TechnicalDiagram({
     (image.url.startsWith("data:image/") ||
       image.url.startsWith("http://") ||
       image.url.startsWith("https://") ||
-      image.diagramType === "custom-upload");
+      image.diagramType === "custom-upload" ||
+      (image.url.startsWith("/") && !image.url.startsWith("/images/diagrams/")));
 
   const showImg = isCustomUploadedUrl && !imgError && Boolean(image.url?.trim());
 

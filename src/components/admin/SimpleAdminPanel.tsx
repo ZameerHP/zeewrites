@@ -509,7 +509,10 @@ export function SimpleAdminPanel({ onLock, onOpenAdvanced }: SimpleAdminPanelPro
     setFaqs(a.faqs || []);
     const isUpload =
       a.coverImage.diagramType === "custom-upload" ||
-      a.coverImage.url.startsWith("data:image/");
+      a.coverImage.url.startsWith("data:image/") ||
+      a.coverImage.url.startsWith("http://") ||
+      a.coverImage.url.startsWith("https://") ||
+      (!a.coverImage.url.startsWith("/images/diagrams/") && Boolean(a.coverImage.url));
     setCoverType(isUpload ? DEFAULT_COVER_BY_CATEGORY[a.category] : a.coverImage.diagramType || "utf8-pipeline");
     setCoverUrl(isUpload ? a.coverImage.url : "");
     setCoverSize({ w: a.coverImage.width || 1200, h: a.coverImage.height || 750 });
@@ -538,7 +541,7 @@ export function SimpleAdminPanel({ onLock, onOpenAdvanced }: SimpleAdminPanelPro
     reader.onload = (ev) => {
       const img = new Image();
       img.onload = () => {
-        const maxW = 1600;
+        const maxW = 1200;
         const scale = img.width > maxW ? maxW / img.width : 1;
         const w = Math.round(img.width * scale);
         const h = Math.round(img.height * scale);
@@ -548,7 +551,7 @@ export function SimpleAdminPanel({ onLock, onOpenAdvanced }: SimpleAdminPanelPro
         const ctx = canvas.getContext("2d");
         if (!ctx) return;
         ctx.drawImage(img, 0, 0, w, h);
-        setCoverUrl(canvas.toDataURL("image/webp", 0.84));
+        setCoverUrl(canvas.toDataURL("image/webp", 0.80));
         setCoverSize({ w, h });
         showToast("Image added and optimized.");
       };
@@ -653,11 +656,9 @@ export function SimpleAdminPanel({ onLock, onOpenAdvanced }: SimpleAdminPanelPro
     const clash = articles.find(
       (a) => a.slug === finalSlug && a.id !== editing?.id
     );
-    if (clash) {
-      showToast("Another post already uses this link. Change the title or the link in More options.");
-      setShowMore(true);
-      return;
-    }
+    // If user authored a post matching an existing slug, seamlessly update it
+    const targetId = editing?.id || (clash ? clash.id : `art-${Date.now()}`);
+    const existingBase = editing || clash;
 
     setSaving(true);
     const now = new Date().toISOString();
@@ -666,9 +667,9 @@ export function SimpleAdminPanel({ onLock, onOpenAdvanced }: SimpleAdminPanelPro
     let sections = contentToSections(content, fallbackHeading);
 
     // Keep tables / inline images from the original article when headings still match.
-    if (editing) {
+    if (existingBase) {
       sections = sections.map((s) => {
-        const orig = editing.sections.find((o) => o.heading === s.heading);
+        const orig = existingBase.sections?.find((o) => o.heading === s.heading);
         if (!orig) return s;
         return {
           ...s,
@@ -708,22 +709,22 @@ export function SimpleAdminPanel({ onLock, onOpenAdvanced }: SimpleAdminPanelPro
         };
 
     const article: Article = {
-      ...(editing || ({} as Article)),
-      id: editing?.id || `art-${Date.now()}`,
+      ...(existingBase || ({} as Article)),
+      id: targetId,
       slug: finalSlug,
       title: title.trim(),
-      subtitle: editing?.subtitle || cleanSummary,
+      subtitle: existingBase?.subtitle || cleanSummary,
       excerpt: cleanSummary,
       category,
       publishedAt:
-        editing && editing.status === "published" ? editing.publishedAt : now,
+        existingBase && existingBase.status === "published" ? existingBase.publishedAt : now,
       updatedAt: now,
       testedOn: testedOn.trim(),
       readingTimeMinutes: Math.max(1, Math.ceil(wordCount / 200)),
       wordCount,
       featured,
       status,
-      primaryKeyword: editing?.primaryKeyword || title.trim().toLowerCase(),
+      primaryKeyword: existingBase?.primaryKeyword || title.trim().toLowerCase(),
       metaTitle: `${title.trim()} | Zee Writes`,
       metaDescription: cleanSummary.slice(0, 158),
       coverImage: cover,
@@ -731,7 +732,7 @@ export function SimpleAdminPanel({ onLock, onOpenAdvanced }: SimpleAdminPanelPro
         symptom: problem.trim(),
         rootCause: cause.trim(),
         instantFix: quickFix.trim(),
-        estimatedFixTime: editing?.verifiedTakeaway.estimatedFixTime || "",
+        estimatedFixTime: existingBase?.verifiedTakeaway?.estimatedFixTime || "",
         testedPlatforms: testedOn
           .split(",")
           .map((s) => s.trim())
@@ -741,13 +742,13 @@ export function SimpleAdminPanel({ onLock, onOpenAdvanced }: SimpleAdminPanelPro
       sections,
       rawMarkdown: content,
       faqs: cleanFaqs,
-      author: editing?.author || DEFAULT_AUTHOR,
+      author: existingBase?.author || DEFAULT_AUTHOR,
       tags: tags
         .split(",")
         .map((t) => t.trim())
         .filter(Boolean),
       relatedSlugs:
-        editing?.relatedSlugs ||
+        existingBase?.relatedSlugs ||
         articles
           .filter((a) => a.category === category && a.slug !== finalSlug)
           .slice(0, 3)

@@ -59,22 +59,32 @@ function readLocalJson(): DatabaseSchema {
     const tmpDeleted = Array.isArray(tmpParsed?.deletedIds) ? tmpParsed.deletedIds : [];
     const allDeleted = Array.from(new Set([...localDeleted, ...tmpDeleted]));
 
-    const articleMap = new Map<string, Article>();
-    if (Array.isArray(localParsed?.articles)) {
-      for (const a of localParsed.articles) {
-        articleMap.set(a.id, a);
-        if (a.slug) articleMap.set(a.slug, a);
-      }
-    }
-    if (Array.isArray(tmpParsed?.articles)) {
-      for (const a of tmpParsed.articles) {
-        articleMap.set(a.id, a);
-        if (a.slug) articleMap.set(a.slug, a);
+    const candidateMap = new Map<string, Article>();
+    const allParsed = [
+      ...(Array.isArray(localParsed?.articles) ? localParsed.articles : []),
+      ...(Array.isArray(tmpParsed?.articles) ? tmpParsed.articles : []),
+    ];
+
+    for (const a of allParsed) {
+      if (!a || !a.id) continue;
+      const key = a.slug || a.id;
+      const existing = candidateMap.get(key) || candidateMap.get(a.id);
+      if (!existing) {
+        candidateMap.set(key, a);
+        candidateMap.set(a.id, a);
+      } else {
+        const existingTime = new Date(existing.updatedAt || 0).getTime();
+        const candidateTime = new Date(a.updatedAt || 0).getTime();
+        if (candidateTime >= existingTime) {
+          candidateMap.set(key, a);
+          candidateMap.set(a.id, a);
+          candidateMap.set(existing.id, a);
+          if (existing.slug) candidateMap.set(existing.slug, a);
+        }
       }
     }
 
-    const mergedArticles = Array.from(new Set(Array.from(articleMap.values())));
-    const filteredArticles = mergedArticles.filter(
+    const cleanArticles = Array.from(new Set(Array.from(candidateMap.values()))).filter(
       (a) =>
         !allDeleted.includes(a.id) &&
         !allDeleted.includes(a.slug) &&
@@ -88,7 +98,7 @@ function readLocalJson(): DatabaseSchema {
     };
 
     return {
-      articles: filteredArticles,
+      articles: cleanArticles,
       settings,
       deletedIds: allDeleted,
     };
@@ -206,18 +216,30 @@ export async function getDatabase(): Promise<DatabaseSchema> {
         let supabaseArticles: Article[] = artRes.data.map(mapRowToArticle);
 
         // Merge local articles and supabase articles to guarantee zero data loss
-        // of published user articles (e.g. Windows 11 article)
-        const articleMap = new Map<string, Article>();
-        for (const a of local.articles) {
-          articleMap.set(a.id, a);
-          if (a.slug) articleMap.set(a.slug, a);
-        }
-        for (const a of supabaseArticles) {
-          articleMap.set(a.id, a);
-          if (a.slug) articleMap.set(a.slug, a);
+        // Always pick the version with the newer updatedAt timestamp!
+        const candidateMap = new Map<string, Article>();
+        const allCandidates = [...local.articles, ...supabaseArticles];
+
+        for (const a of allCandidates) {
+          if (!a || !a.id) continue;
+          const key = a.slug || a.id;
+          const existing = candidateMap.get(key) || candidateMap.get(a.id);
+          if (!existing) {
+            candidateMap.set(key, a);
+            candidateMap.set(a.id, a);
+          } else {
+            const existingTime = new Date(existing.updatedAt || 0).getTime();
+            const candidateTime = new Date(a.updatedAt || 0).getTime();
+            if (candidateTime >= existingTime) {
+              candidateMap.set(key, a);
+              candidateMap.set(a.id, a);
+              candidateMap.set(existing.id, a);
+              if (existing.slug) candidateMap.set(existing.slug, a);
+            }
+          }
         }
 
-        const merged = Array.from(new Set(Array.from(articleMap.values())));
+        const merged = Array.from(new Set(Array.from(candidateMap.values())));
 
         // Strictly filter out any deleted articles and test/placeholder articles
         const cleanArticles = merged.filter((a) => {
@@ -303,18 +325,39 @@ export async function saveArticle(article: Article): Promise<DatabaseSchema> {
     );
   }
 
-  const existingIdx = current.articles.findIndex(
-    (a) => a.id === article.id || a.slug === article.slug
+  // Replace or prepend the updated article
+  current.articles = current.articles.filter(
+    (a) => a.id !== article.id && a.slug !== article.slug
   );
-  if (existingIdx >= 0) {
-    current.articles[existingIdx] = article;
-  } else {
-    current.articles = [article, ...current.articles];
-  }
+  current.articles.unshift(article);
   writeLocalJson(current);
 
   // 2. Persist to Supabase if configured
   if (isSupabaseConfigured && supabaseAdmin) {
+    try {
+      // Clear any conflicting row by id or slug first to avoid unique key constraints
+      await supabaseAdmin
+        .from("articles")
+        .delete()
+        .or(`id.eq.${article.id},slug.eq.${article.slug}`);
+
+      // Ensure article.id and article.slug are un-deleted from remote site_settings
+      const setRes = await supabaseAdmin.from("site_settings").select("*").limit(1).maybeSingle();
+      const existingSettings = setRes?.data?.raw_payload || {};
+      if (Array.isArray(existingSettings.deletedIds)) {
+        existingSettings.deletedIds = existingSettings.deletedIds.filter(
+          (id: string) => id !== article.id && id !== article.slug
+        );
+        await supabaseAdmin.from("site_settings").upsert({
+          id: "global_settings",
+          raw_payload: existingSettings,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: "id" });
+      }
+    } catch {
+      // ignore
+    }
+
     const fullPayload = {
       id: article.id,
       slug: article.slug,
@@ -332,6 +375,16 @@ export async function saveArticle(article: Article): Promise<DatabaseSchema> {
       primary_keyword: article.primaryKeyword,
       meta_title: article.metaTitle,
       meta_description: article.metaDescription,
+      cover_image: article.coverImage,
+      verified_takeaway: article.verifiedTakeaway,
+      how_to_steps: article.howToSteps,
+      sections: article.sections,
+      faqs: article.faqs,
+      author: article.author,
+      tags: article.tags,
+      related_slugs: article.relatedSlugs,
+      helpful_yes: article.helpfulYes ?? 0,
+      helpful_no: article.helpfulNo ?? 0,
       raw_payload: article,
     };
 
@@ -341,10 +394,10 @@ export async function saveArticle(article: Article): Promise<DatabaseSchema> {
         .upsert(fullPayload, { onConflict: "id" })
         .select();
 
-      // If full payload failed due to custom/missing columns in user's table, retry with core schema
+      // If full payload failed due to custom/missing columns in user's table, retry with core schema + raw_payload
       if (res.error) {
-        console.warn("Full payload upsert failed, retrying with core fields:", res.error.message);
-        const corePayload: Record<string, any> = {
+        console.warn("Full payload upsert notice, retrying with raw_payload:", res.error.message);
+        const coreWithRaw: Record<string, any> = {
           id: article.id,
           slug: article.slug,
           title: article.title,
@@ -353,24 +406,31 @@ export async function saveArticle(article: Article): Promise<DatabaseSchema> {
           updated_at: article.updatedAt,
           status: article.status,
           excerpt: article.excerpt,
+          cover_image: article.coverImage,
+          raw_payload: article,
         };
 
         const tryWithRaw = await supabaseAdmin
           .from("articles")
-          .upsert({ ...corePayload, raw_payload: article }, { onConflict: "id" })
+          .upsert(coreWithRaw, { onConflict: "id" })
           .select();
 
-        if (!tryWithRaw.error) {
-          res = tryWithRaw;
-        } else {
-          res = await supabaseAdmin
-            .from("articles")
-            .upsert(corePayload, { onConflict: "id" })
-            .select();
+        if (tryWithRaw.error) {
+          const minimal = {
+            id: article.id,
+            slug: article.slug,
+            title: article.title,
+            category: article.category,
+            published_at: article.publishedAt,
+            updated_at: article.updatedAt,
+            status: article.status,
+            excerpt: article.excerpt,
+          };
+          await supabaseAdmin.from("articles").upsert(minimal, { onConflict: "id" });
         }
       }
     } catch (err) {
-      console.warn("Supabase upsert warning (article saved to serverless runtime):", err);
+      console.warn("Supabase upsert warning:", err);
     }
   }
 

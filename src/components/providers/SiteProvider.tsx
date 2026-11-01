@@ -174,22 +174,27 @@ export function SiteProvider({
     const deletedIds = getLocalDeletedIds();
     if (localUserArticles.length > 0) {
       setArticles((prev) => {
-        const filtered = prev.filter(
+        let updated = prev.filter(
           (a) =>
             !deletedIds.includes(a.id) &&
             !deletedIds.includes(a.slug) &&
             !SEED_SAMPLE_IDS.has(a.id) &&
             !SEED_SAMPLE_IDS.has(a.slug)
         );
-        const missing = localUserArticles.filter(
-          (u) =>
-            !deletedIds.includes(u.id) &&
-            !deletedIds.includes(u.slug) &&
-            !SEED_SAMPLE_IDS.has(u.id) &&
-            !SEED_SAMPLE_IDS.has(u.slug) &&
-            !filtered.some((f) => f.id === u.id || f.slug === u.slug)
-        );
-        return missing.length > 0 ? [...missing, ...filtered] : filtered;
+        for (const u of localUserArticles) {
+          if (deletedIds.includes(u.id) || deletedIds.includes(u.slug)) continue;
+          const idx = updated.findIndex((a) => a.id === u.id || a.slug === u.slug);
+          if (idx >= 0) {
+            const uTime = new Date(u.updatedAt || 0).getTime();
+            const prevTime = new Date(updated[idx].updatedAt || 0).getTime();
+            if (uTime >= prevTime) {
+              updated[idx] = u;
+            }
+          } else {
+            updated.unshift(u);
+          }
+        }
+        return updated;
       });
     }
   }, []);
@@ -334,20 +339,27 @@ export function SiteProvider({
             !SEED_SAMPLE_IDS.has(a.slug)
         );
 
-        // 2. Auto-heal: If server restarted and lost /tmp data, restore from local storage
-        const missingOnServer: Article[] = [];
+        // 2. Auto-heal & Sync: Compare timestamps between local storage and server
+        const toSyncToServer: Article[] = [];
         for (const userArt of localUserArticles) {
           if (deletedIds.includes(userArt.id) || deletedIds.includes(userArt.slug)) continue;
-          const exists = merged.some((a) => a.id === userArt.id || a.slug === userArt.slug);
-          if (!exists) {
-            missingOnServer.push(userArt);
+          const serverIdx = merged.findIndex((a) => a.id === userArt.id || a.slug === userArt.slug);
+          if (serverIdx >= 0) {
+            const serverArt = merged[serverIdx];
+            const userTime = new Date(userArt.updatedAt || 0).getTime();
+            const serverTime = new Date(serverArt.updatedAt || 0).getTime();
+            if (userTime > serverTime) {
+              merged[serverIdx] = userArt;
+              toSyncToServer.push(userArt);
+            }
+          } else {
+            merged.unshift(userArt);
+            toSyncToServer.push(userArt);
           }
         }
 
-        if (missingOnServer.length > 0) {
-          merged = [...missingOnServer, ...merged];
-          // Auto-sync missing articles back to server
-          for (const art of missingOnServer) {
+        if (toSyncToServer.length > 0) {
+          for (const art of toSyncToServer) {
             fetch("/api/cms", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
