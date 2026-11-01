@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   description:
     "Privacy Policy for Zee Writes, covering information we collect, browser text tools, cookies, Google AdSense, and your privacy rights.",
   alternates: {
-    canonical: "https://zeewrites.com/privacy-policy",
+    canonical: "https://zeewrites.blog/privacy-policy",
   },
 };
 

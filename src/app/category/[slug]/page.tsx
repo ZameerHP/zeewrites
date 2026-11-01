@@ -33,12 +33,12 @@ export async function generateMetadata({
     title: category.seoTitle,
     description: category.seoDescription,
     alternates: {
-      canonical: `https://zeewrites.com/category/${category.slug}`,
+      canonical: `https://zeewrites.blog/category/${category.slug}`,
     },
     openGraph: {
       title: category.seoTitle,
       description: category.seoDescription,
-      url: `https://zeewrites.com/category/${category.slug}`,
+      url: `https://zeewrites.blog/category/${category.slug}`,
       type: "website",
     },
   };
@@ -68,13 +68,13 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
         "@type": "ListItem",
         position: 1,
         name: "Home",
-        item: "https://zeewrites.com",
+        item: "https://zeewrites.blog",
       },
       {
         "@type": "ListItem",
         position: 2,
         name: category.name,
-        item: `https://zeewrites.com/category/${category.slug}`,
+        item: `https://zeewrites.blog/category/${category.slug}`,
       },
     ],
   };

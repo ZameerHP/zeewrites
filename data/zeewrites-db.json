@@ -324,7 +324,7 @@
   ],
   "settings": {
     "siteName": "Zee Writes",
-    "siteUrl": "https://zeewrites.vercel.app",
+    "siteUrl": "https://zeewrites.blog",
     "contactEmail": "zameerpanhwer67@gmail.com",
     "publisherId": "ca-pub-0000000000000000",
     "adsenseMode": "off",
@@ -332,7 +332,7 @@
     "gscVerification": "",
     "ga4Id": "",
     "cookieBannerEnabled": true,
-    "updatedAt": "2026-11-01T17:37:07.873Z"
+    "updatedAt": "2026-11-01T18:04:21.466Z"
   },
   "deletedIds": [
     "art-01",

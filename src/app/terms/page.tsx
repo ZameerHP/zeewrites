@@ -6,7 +6,7 @@ export const metadata: Metadata = {
   description:
     "Terms of use for Zee Writes guides, tech fixes, and browser text tools.",
   alternates: {
-    canonical: "https://zeewrites.com/terms",
+    canonical: "https://zeewrites.blog/terms",
   },
 };
 

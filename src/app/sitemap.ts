@@ -8,7 +8,7 @@ export const revalidate = 0;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const { articles, settings, deletedIds = [] } = await getDatabase();
-  let baseUrl = (settings.siteUrl || "https://zeewrites.vercel.app").replace(/\/$/, "");
+  let baseUrl = (settings.siteUrl || "https://zeewrites.blog").replace(/\/$/, "");
 
   try {
     const h = await headers();

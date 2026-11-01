@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 export default async function robots(): Promise<MetadataRoute.Robots> {
   const { settings } = await getDatabase();
-  let baseUrl = (settings.siteUrl || "https://zeewrites.vercel.app").replace(/\/$/, "");
+  let baseUrl = (settings.siteUrl || "https://zeewrites.blog").replace(/\/$/, "");
 
   try {
     const h = await headers();

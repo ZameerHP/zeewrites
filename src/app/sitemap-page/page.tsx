@@ -13,7 +13,7 @@ export const metadata: Metadata = {
   description:
     "HTML Sitemap of all guides, categories, and legal pages on Zee Writes.",
   alternates: {
-    canonical: "https://zeewrites.com/sitemap-page",
+    canonical: "https://zeewrites.blog/sitemap-page",
   },
 };
 

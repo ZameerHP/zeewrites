@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   description:
     "Zee Writes publishes practical guides and step-by-step tech fixes written by Zee.",
   alternates: {
-    canonical: "https://zeewrites.com/about",
+    canonical: "https://zeewrites.blog/about",
   },
 };
 

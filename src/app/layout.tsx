@@ -27,7 +27,7 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://zeewrites.com"),
+  metadataBase: new URL("https://zeewrites.blog"),
   title: {
     default: "Zee Writes | Guides & Tech Fixes",
     template: "%s | Zee Writes",
@@ -42,13 +42,13 @@ export const metadata: Metadata = {
     "Git CRLF LF fix",
     "JSON validation guide",
   ],
-  authors: [{ name: "Zee", url: "https://zeewrites.com/about" }],
+  authors: [{ name: "Zee", url: "https://zeewrites.blog/about" }],
   creator: "Zee",
   publisher: "Zee Writes",
   openGraph: {
     type: "website",
     locale: "en_US",
-    url: "https://zeewrites.com",
+    url: "https://zeewrites.blog",
     siteName: "Zee Writes",
     title: "Zee Writes | Guides & Tech Fixes",
     description: "Guides and practical tech fixes written by Zee.",
@@ -59,7 +59,7 @@ export const metadata: Metadata = {
     description: "Guides and practical tech fixes written by Zee.",
   },
   alternates: {
-    canonical: "https://zeewrites.com",
+    canonical: "https://zeewrites.blog",
   },
 };
 
