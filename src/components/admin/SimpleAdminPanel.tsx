@@ -13,6 +13,10 @@ import {
   Search,
   Settings,
   ChevronDown,
+  Sparkles,
+  Eye,
+  Columns2,
+  Check,
 } from "lucide-react";
 import {
   Article,
@@ -26,6 +30,8 @@ import { CATEGORIES, CATEGORY_LIST, DEFAULT_AUTHOR } from "@/data/categories";
 import { useSite } from "@/components/providers/SiteProvider";
 import { TechnicalDiagram } from "@/components/ui/TechnicalDiagram";
 import { DeleteConfirmModal } from "@/components/ui/DeleteConfirmModal";
+import { parseArticle, blocksToMarkdown, blocksToSections, ArticleBlock } from "@/lib/smart-paste";
+import { SmartArticlePreview } from "./SmartArticlePreview";
 
 /* --------------------------------------------------------------------------
  * Helpers
@@ -80,199 +86,8 @@ function countWords(text: string): number {
  *   > Tip: text        -> highlighted tip/note/warning box
  */
 function contentToSections(content: string, fallbackHeading: string): ArticleSection[] {
-  const lines = content.replace(/\r\n/g, "\n").split("\n");
-  const sections: ArticleSection[] = [];
-  const usedIds = new Set<string>();
-
-  const makeId = (heading: string) => {
-    const base = slugify(heading) || "section";
-    let id = base;
-    let n = 2;
-    while (usedIds.has(id)) id = `${base}-${n++}`;
-    usedIds.add(id);
-    return id;
-  };
-
-  let current: ArticleSection | null = null;
-  let paragraphLines: string[] = [];
-  let inCode = false;
-  let codeLang = "";
-  let codeLines: string[] = [];
-
-  const ensureSection = () => {
-    if (!current) {
-      current = {
-        id: makeId(fallbackHeading),
-        heading: fallbackHeading,
-        paragraphs: [],
-        items: [],
-      };
-      sections.push(current);
-    }
-    return current;
-  };
-
-  const flushParagraph = () => {
-    if (paragraphLines.length === 0) return;
-    const text = paragraphLines.join(" ").trim();
-    paragraphLines = [];
-    if (!text) return;
-
-    const sec = ensureSection();
-    if (!sec.items) sec.items = [];
-
-    const tip = text.match(/^>\s*(tip|note|warning|pro-tip)?\s*:?\s*(.*)$/i);
-    if (text.startsWith(">") && tip) {
-      const rawKind = (tip[1] || "tip").toLowerCase();
-      const kind: "tip" | "warning" | "note" | "pro-tip" =
-        rawKind === "warning" ? "warning" : rawKind === "note" ? "note" : "tip";
-      const title =
-        kind === "warning" ? "Warning" : kind === "note" ? "Note" : "Tip";
-      const body = tip[2].replace(/^>\s*/gm, "").trim();
-
-      sec.items.push({
-        type: "callout",
-        kind,
-        title,
-        body,
-      });
-
-      if (!sec.callout) {
-        sec.callout = {
-          type: kind === "warning" ? "warning" : "pro-tip",
-          title,
-          body,
-        };
-      }
-      return;
-    }
-
-    sec.paragraphs.push(text);
-    sec.items.push({
-      type: "paragraph",
-      text,
-    });
-  };
-
-  for (let i = 0; i < lines.length; i++) {
-    const rawLine = lines[i];
-
-    if (inCode) {
-      if (rawLine.trim().startsWith("```")) {
-        inCode = false;
-        const sec = ensureSection();
-        if (!sec.items) sec.items = [];
-        const codeContent = codeLines.join("\n");
-        const codeBlockObj = {
-          language: codeLang || "text",
-          code: codeContent,
-        };
-        sec.items.push({
-          type: "code",
-          ...codeBlockObj,
-        });
-        if (!sec.codeBlock) {
-          sec.codeBlock = codeBlockObj;
-        }
-        codeLines = [];
-        codeLang = "";
-      } else {
-        codeLines.push(rawLine);
-      }
-      continue;
-    }
-
-    if (rawLine.trim().startsWith("```")) {
-      flushParagraph();
-      inCode = true;
-      codeLang = rawLine.trim().slice(3).trim();
-      continue;
-    }
-
-    // Callout / Blockquote line
-    if (rawLine.trim().startsWith(">")) {
-      if (paragraphLines.length > 0 && !paragraphLines[0].startsWith(">")) {
-        flushParagraph();
-      }
-      paragraphLines.push(rawLine.trim());
-      continue;
-    } else if (paragraphLines.length > 0 && paragraphLines[0].startsWith(">")) {
-      flushParagraph();
-    }
-
-    // Top-level section headings (# or ##)
-    const sectionHeadingMatch = rawLine.match(/^#{1,2}\s+(.+)$/);
-    if (sectionHeadingMatch) {
-      flushParagraph();
-      const heading = sectionHeadingMatch[1].trim();
-      current = {
-        id: makeId(heading),
-        heading,
-        paragraphs: [],
-        items: [],
-      };
-      sections.push(current);
-      continue;
-    }
-
-    // Subheadings (### or ####)
-    const subHeadingMatch = rawLine.match(/^#{3,6}\s+(.+)$/);
-    if (subHeadingMatch) {
-      flushParagraph();
-      const title = subHeadingMatch[1].trim();
-      const sec = ensureSection();
-      if (!sec.items) sec.items = [];
-      sec.items.push({
-        type: "subheading",
-        title,
-      });
-      if (!sec.subheadings) sec.subheadings = [];
-      sec.subheadings.push({
-        id: makeId(title),
-        title,
-        paragraphs: [],
-      });
-      continue;
-    }
-
-    if (rawLine.trim() === "") {
-      flushParagraph();
-      continue;
-    }
-
-    paragraphLines.push(rawLine.trim());
-  }
-
-  if (inCode && codeLines.length) {
-    const sec = ensureSection();
-    if (!sec.items) sec.items = [];
-    const codeBlockObj = {
-      language: codeLang || "text",
-      code: codeLines.join("\n"),
-    };
-    sec.items.push({
-      type: "code",
-      ...codeBlockObj,
-    });
-    if (!sec.codeBlock) {
-      sec.codeBlock = codeBlockObj;
-    }
-  }
-
-  flushParagraph();
-
-  // Always keep sections with an explicit heading or real content
-  return sections.filter((s) => {
-    const hasExplicitHeading =
-      Boolean(s.heading) && s.heading.trim().length > 0 && s.heading !== fallbackHeading;
-    const hasContent =
-      s.paragraphs.length > 0 ||
-      s.codeBlock !== undefined ||
-      s.callout !== undefined ||
-      (s.items && s.items.length > 0) ||
-      (s.subheadings && s.subheadings.length > 0);
-    return hasExplicitHeading || hasContent;
-  });
+  const parsed = parseArticle(content);
+  return blocksToSections(parsed.blocks, fallbackHeading);
 }
 
 function sectionsToContent(sections: ArticleSection[]): string {
@@ -438,6 +253,126 @@ export function SimpleAdminPanel({ onLock, onOpenAdvanced }: SimpleAdminPanelPro
   const [customSlug, setCustomSlug] = useState("");
   const [showMore, setShowMore] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  // Smart Paste, Live Preview, and Undo state
+  const [autoFormatOnPaste, setAutoFormatOnPaste] = useState(true);
+  const [editorMode, setEditorMode] = useState<"edit" | "preview" | "split">("edit");
+  const [lastUndoState, setLastUndoState] = useState<{
+    content: string;
+    title: string;
+    slug: string;
+    summary: string;
+  } | null>(null);
+  const [undoToast, setUndoToast] = useState<{ message: string; visible: boolean } | null>(null);
+
+  const parsedPreview = useMemo(() => {
+    return parseArticle(content);
+  }, [content]);
+
+  const handleUpdateBlocks = (updatedBlocks: ArticleBlock[]) => {
+    const nextMd = blocksToMarkdown(updatedBlocks);
+    setContent(nextMd);
+  };
+
+  const handleUndo = () => {
+    if (!lastUndoState) return;
+    setContent(lastUndoState.content);
+    setTitle(lastUndoState.title);
+    setCustomSlug(lastUndoState.slug);
+    setSummary(lastUndoState.summary);
+    setLastUndoState(null);
+    setUndoToast(null);
+    showToast("Reverted to original unformatted text.");
+  };
+
+  const handleSmartPaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    if (!autoFormatOnPaste) return;
+
+    const rawText = e.clipboardData?.getData("text/plain") || "";
+    const htmlText = e.clipboardData?.getData("text/html") || "";
+
+    if (rawText.length < 250 && !rawText.includes("\n\n")) {
+      return;
+    }
+
+    e.preventDefault();
+
+    setLastUndoState({
+      content,
+      title,
+      slug: customSlug,
+      summary,
+    });
+
+    const parsed = parseArticle(rawText, htmlText);
+    const formattedMd = blocksToMarkdown(parsed.blocks);
+
+    if (!title.trim() && parsed.title) {
+      setTitle(parsed.title);
+      if (!customSlug.trim() && parsed.slug) {
+        setCustomSlug(parsed.slug);
+      }
+    }
+    if (!summary.trim() && parsed.excerpt) {
+      setSummary(parsed.excerpt);
+    }
+
+    const el = contentRef.current;
+    if (el) {
+      const start = el.selectionStart ?? content.length;
+      const end = el.selectionEnd ?? content.length;
+      const before = content.slice(0, start);
+      const after = content.slice(end);
+      const nextContent = before ? `${before}\n\n${formattedMd}${after ? `\n\n${after}` : ""}` : formattedMd;
+      setContent(nextContent);
+    } else {
+      setContent(formattedMd);
+    }
+
+    setUndoToast({
+      message: "Article formatted.",
+      visible: true,
+    });
+  };
+
+  const handleSmartFormat = () => {
+    if (!content.trim()) {
+      showToast("Write or paste some text first.");
+      return;
+    }
+
+    setLastUndoState({
+      content,
+      title,
+      slug: customSlug,
+      summary,
+    });
+
+    const parsed = parseArticle(content);
+    const formattedMd = blocksToMarkdown(parsed.blocks);
+
+    if (!title.trim() && parsed.title) {
+      setTitle(parsed.title);
+      if (!customSlug.trim() && parsed.slug) {
+        setCustomSlug(parsed.slug);
+      }
+    }
+    if (!summary.trim() && parsed.excerpt) {
+      setSummary(parsed.excerpt);
+    }
+
+    setContent(formattedMd);
+    setUndoToast({
+      message: "Article formatted.",
+      visible: true,
+    });
+  };
+
+  const handleContentKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z" && lastUndoState) {
+      handleUndo();
+    }
+  };
 
   const fileRef = useRef<HTMLInputElement | null>(null);
   const contentRef = useRef<HTMLTextAreaElement | null>(null);
@@ -1053,52 +988,162 @@ export function SimpleAdminPanel({ onLock, onOpenAdvanced }: SimpleAdminPanelPro
             <Card
               step={2}
               title="Write your post"
-              right={<span className="text-[13px] text-muted">{wordCount} words</span>}
+              right={
+                <div className="flex items-center gap-3">
+                  <span className="text-[13px] text-muted">{wordCount} words</span>
+                  <div className="inline-flex items-center rounded-lg border border-hairline bg-page p-0.5 text-[12px]">
+                    <button
+                      type="button"
+                      onClick={() => setEditorMode("edit")}
+                      className={`px-2.5 py-1 rounded-md font-medium transition-colors ${
+                        editorMode === "edit" ? "bg-surface shadow-1 text-ink" : "text-muted hover:text-ink"
+                      }`}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditorMode("preview")}
+                      className={`px-2.5 py-1 rounded-md font-medium transition-colors ${
+                        editorMode === "preview" ? "bg-surface shadow-1 text-ink" : "text-muted hover:text-ink"
+                      }`}
+                    >
+                      Live Preview
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditorMode("split")}
+                      className={`hidden sm:inline-flex px-2.5 py-1 rounded-md font-medium transition-colors ${
+                        editorMode === "split" ? "bg-surface shadow-1 text-ink" : "text-muted hover:text-ink"
+                      }`}
+                    >
+                      Side-by-Side
+                    </button>
+                  </div>
+                </div>
+              }
             >
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => insertSnippet("heading")}
+                    className="px-3 min-h-[34px] rounded-full border border-hairline text-[13px] text-ink hover:border-[#4a74f0] transition-colors"
+                  >
+                    + Heading
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => insertSnippet("code")}
+                    className="px-3 min-h-[34px] rounded-full border border-hairline text-[13px] text-ink hover:border-[#4a74f0] transition-colors"
+                  >
+                    + Code box
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => insertSnippet("tip")}
+                    className="px-3 min-h-[34px] rounded-full border border-hairline text-[13px] text-ink hover:border-[#4a74f0] transition-colors"
+                  >
+                    + Tip box
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => insertSnippet("link")}
+                    className="px-3 min-h-[34px] rounded-full border border-hairline text-[13px] text-ink hover:border-[#4a74f0] transition-colors"
+                  >
+                    + Link
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSmartFormat}
+                    title="Automatically structure text, clean code artifacts, and format headings"
+                    className="inline-flex items-center gap-1.5 px-3 min-h-[34px] rounded-full bg-badge-bg text-navy dark:text-accent border border-hairline hover:border-navy font-medium text-[13px] transition-colors"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-navy dark:text-accent" />
+                    <span>Smart Format</span>
+                  </button>
+                </div>
+
                 <button
                   type="button"
-                  onClick={() => insertSnippet("heading")}
-                  className="px-3 min-h-[34px] rounded-full border border-hairline text-[13px] text-ink hover:border-[#4a74f0]"
+                  onClick={() => setAutoFormatOnPaste((v) => !v)}
+                  title="Automatically format long text when pasted"
+                  className={`inline-flex items-center gap-1.5 px-3 min-h-[32px] rounded-full border text-[12px] font-medium transition-colors ${
+                    autoFormatOnPaste
+                      ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700"
+                      : "bg-surface text-muted border-hairline hover:text-ink"
+                  }`}
                 >
-                  + Heading
-                </button>
-                <button
-                  type="button"
-                  onClick={() => insertSnippet("code")}
-                  className="px-3 min-h-[34px] rounded-full border border-hairline text-[13px] text-ink hover:border-[#4a74f0]"
-                >
-                  + Code box
-                </button>
-                <button
-                  type="button"
-                  onClick={() => insertSnippet("tip")}
-                  className="px-3 min-h-[34px] rounded-full border border-hairline text-[13px] text-ink hover:border-[#4a74f0]"
-                >
-                  + Tip box
-                </button>
-                <button
-                  type="button"
-                  onClick={() => insertSnippet("link")}
-                  className="px-3 min-h-[34px] rounded-full border border-hairline text-[13px] text-ink hover:border-[#4a74f0]"
-                >
-                  + Link
+                  <Check className={`w-3.5 h-3.5 ${autoFormatOnPaste ? "opacity-100" : "opacity-0"}`} />
+                  <span>Auto-format on paste {autoFormatOnPaste ? "ON" : "OFF"}</span>
                 </button>
               </div>
-              <textarea
-                ref={contentRef}
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                rows={18}
-                placeholder={
-                  "## Why this happens\n\nWrite normally. Leave an empty line between paragraphs.\n\n## How to fix it\n\nStart a new section with ## and a heading.\n\n> Tip: Lines starting with > Tip: become a highlighted tip."
-                }
-                className={`${inputCls} font-sans leading-[1.7] min-h-[360px]`}
-              />
-              <p className="text-[13px] text-muted">
-                Just type. Use <b>## Heading</b> for a new section, an empty line for a new
-                paragraph, the <b>Code box</b> button for commands, and <b>&gt; Tip:</b> for a tip box.
-              </p>
+
+              {editorMode === "edit" && (
+                <div className="space-y-2">
+                  <textarea
+                    ref={contentRef}
+                    value={content}
+                    onChange={(e) => setContent(e.target.value)}
+                    onPaste={handleSmartPaste}
+                    onKeyDown={handleContentKeyDown}
+                    rows={18}
+                    placeholder={
+                      "Paste any raw article from ChatGPT, Claude, Docs, Word or .txt here...\n\nSmart Paste will instantly detect sections, headings, commands, code blocks, lists, and callouts."
+                    }
+                    className={`${inputCls} font-sans leading-[1.7] min-h-[380px]`}
+                  />
+                  <p className="text-[13px] text-muted flex items-center justify-between">
+                    <span>
+                      Smart Paste is active. Paste anywhere or use <b>Smart Format</b> to re-format.
+                    </span>
+                    {lastUndoState && (
+                      <button
+                        type="button"
+                        onClick={handleUndo}
+                        className="text-navy dark:text-accent font-semibold hover:underline"
+                      >
+                        Undo last format (Ctrl+Z)
+                      </button>
+                    )}
+                  </p>
+                </div>
+              )}
+
+              {editorMode === "preview" && (
+                <div className="rounded-[18px] border border-hairline bg-surface p-5 sm:p-7 min-h-[400px]">
+                  <SmartArticlePreview
+                    blocks={parsedPreview.blocks}
+                    onUpdateBlocks={handleUpdateBlocks}
+                  />
+                </div>
+              )}
+
+              {editorMode === "split" && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <span className="text-[12px] font-semibold text-muted uppercase tracking-wider block">Editor</span>
+                    <textarea
+                      ref={contentRef}
+                      value={content}
+                      onChange={(e) => setContent(e.target.value)}
+                      onPaste={handleSmartPaste}
+                      onKeyDown={handleContentKeyDown}
+                      rows={20}
+                      className={`${inputCls} font-sans leading-[1.7] min-h-[500px]`}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <span className="text-[12px] font-semibold text-muted uppercase tracking-wider block">Live Formatted Preview</span>
+                    <div className="rounded-[18px] border border-hairline bg-surface p-4 sm:p-5 max-h-[560px] overflow-y-auto">
+                      <SmartArticlePreview
+                        blocks={parsedPreview.blocks}
+                        onUpdateBlocks={handleUpdateBlocks}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
             </Card>
 
             {/* 3. Steps */}
@@ -1401,6 +1446,27 @@ export function SimpleAdminPanel({ onLock, onOpenAdvanced }: SimpleAdminPanelPro
             )}
           </aside>
         </div>
+        </div>
+      )}
+
+      {/* Floating Undo Toast for Smart Paste */}
+      {undoToast?.visible && (
+        <div className="fixed bottom-6 right-6 z-50 rounded-[14px] bg-ink text-white px-4 py-3 shadow-2 border border-white/10 flex items-center gap-3 text-[14px] animate-in slide-in-from-bottom-2 duration-150">
+          <span>{undoToast.message}</span>
+          <button
+            type="button"
+            onClick={handleUndo}
+            className="underline font-semibold text-accent hover:text-white transition-colors"
+          >
+            Undo
+          </button>
+          <button
+            type="button"
+            onClick={() => setUndoToast(null)}
+            className="ml-1 text-white/60 hover:text-white text-[12px]"
+          >
+            ✕
+          </button>
         </div>
       )}
 

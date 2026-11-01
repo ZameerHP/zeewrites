@@ -98,6 +98,110 @@ function renderFormattedText(text: string): React.ReactNode {
   return nodes.length === 1 && typeof nodes[0] === "string" ? nodes[0] : <>{nodes}</>;
 }
 
+/**
+ * Render structured content blocks inside articles:
+ * - Markdown tables (| ... |) -> responsive scrollable table
+ * - Bullet lists (- item) -> <ul>
+ * - Numbered lists (1. item) -> <ol>
+ * - Blockquotes (> quote) -> <blockquote>
+ * - Paragraphs -> <p>
+ */
+function renderContentBlock(text: string, keyPrefix: string): React.ReactNode {
+  if (!text) return null;
+  const trimmed = text.trim();
+
+  // 1. Table
+  if (trimmed.startsWith("|") && trimmed.includes("\n|")) {
+    const lines = trimmed.split("\n").filter((l) => l.trim().startsWith("|"));
+    if (lines.length >= 2) {
+      const parseCells = (line: string) =>
+        line
+          .replace(/^\|/, "")
+          .replace(/\|$/, "")
+          .split("|")
+          .map((c) => c.trim());
+      const headers = parseCells(lines[0]);
+      const startRow = lines[1].includes("---") ? 2 : 1;
+      const rows = lines.slice(startRow).map(parseCells);
+
+      return (
+        <div key={keyPrefix} className="overflow-x-auto rounded-[18px] bg-surface shadow-2 border border-hairline my-4">
+          <table className="w-full text-left border-collapse text-[15px]">
+            <thead>
+              <tr className="border-b border-hairline bg-badge-bg">
+                {headers.map((h, i) => (
+                  <th key={i} className="py-3 px-4 text-[14px] font-semibold text-ink">
+                    {renderFormattedText(h)}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-hairline">
+              {rows.map((row, rIdx) => (
+                <tr key={rIdx} className="hover:bg-page transition-colors">
+                  {row.map((cell, cIdx) => (
+                    <td key={cIdx} className="py-3 px-4 text-[15px] text-secondary">
+                      {renderFormattedText(cell)}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
+    }
+  }
+
+  // 2. Bullet list
+  if (/^[-*•–✔✓]\s+/.test(trimmed)) {
+    const items = trimmed.split("\n").filter((l) => /^[-*•–✔✓]\s+/.test(l.trim()));
+    if (items.length > 0) {
+      return (
+        <ul key={keyPrefix} className="space-y-2 my-4 pl-5 list-disc text-secondary text-[18px] leading-[1.75]">
+          {items.map((it, i) => (
+            <li key={i}>{renderFormattedText(it.trim().replace(/^[-*•–✔✓]\s+/, ""))}</li>
+          ))}
+        </ul>
+      );
+    }
+  }
+
+  // 3. Numbered list
+  if (/^\d+[\.\)]\s+/.test(trimmed)) {
+    const items = trimmed.split("\n").filter((l) => /^\d+[\.\)]\s+/.test(l.trim()));
+    if (items.length > 0) {
+      return (
+        <ol key={keyPrefix} className="space-y-2 my-4 pl-5 list-decimal text-secondary text-[18px] leading-[1.75]">
+          {items.map((it, i) => (
+            <li key={i}>{renderFormattedText(it.trim().replace(/^\d+[\.\)]\s+/, ""))}</li>
+          ))}
+        </ol>
+      );
+    }
+  }
+
+  // 4. Blockquote
+  if (trimmed.startsWith(">")) {
+    const cleanQuote = trimmed.replace(/^>\s*/gm, "").trim();
+    return (
+      <blockquote
+        key={keyPrefix}
+        className="my-4 pl-4 border-l-4 border-navy/40 dark:border-accent/40 italic text-secondary text-[18px] leading-[1.75]"
+      >
+        {renderFormattedText(cleanQuote)}
+      </blockquote>
+    );
+  }
+
+  // Default Paragraph
+  return (
+    <p key={keyPrefix} className="font-sans text-[18px] leading-[1.75] text-secondary">
+      {renderFormattedText(text)}
+    </p>
+  );
+}
+
 interface ArticleReaderViewProps {
   initialArticle: Article;
   slug: string;
@@ -428,14 +532,7 @@ export function ArticleReaderView({
                 {section.items && section.items.length > 0 ? (
                   section.items.map((item, itemIdx) => {
                     if (item.type === "paragraph") {
-                      return (
-                        <p
-                          key={itemIdx}
-                          className="font-sans text-[18px] leading-[1.75] text-secondary"
-                        >
-                          {renderFormattedText(item.text)}
-                        </p>
-                      );
+                      return renderContentBlock(item.text, `item-${secIndex}-${itemIdx}`);
                     }
                     if (item.type === "code") {
                       const itemCodeKey = `${codeKey}-${itemIdx}`;
@@ -514,14 +611,9 @@ export function ArticleReaderView({
                   })
                 ) : (
                   <>
-                    {section.paragraphs.map((p, pIdx) => (
-                      <p
-                        key={pIdx}
-                        className="font-sans text-[18px] leading-[1.75] text-secondary"
-                      >
-                        {renderFormattedText(p)}
-                      </p>
-                    ))}
+                    {section.paragraphs.map((p, pIdx) =>
+                      renderContentBlock(p, `sec-${secIndex}-p-${pIdx}`)
+                    )}
 
                     {section.inlineImage && (
                       <div className="rounded-[24px] bg-surface border border-hairline shadow-2 p-3">
