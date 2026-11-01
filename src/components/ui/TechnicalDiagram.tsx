@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState } from "react";
 import { ArrowRight, Check } from "lucide-react";
 import { ArticleImage } from "@/types";

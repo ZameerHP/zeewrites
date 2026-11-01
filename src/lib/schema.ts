@@ -83,12 +83,14 @@ export function generateArticleJsonLd(article: Article, settings: SiteSettings) 
       },
       image: {
         "@type": "ImageObject",
-        url: article.coverImage.url.startsWith("http")
+        url: article.coverImage?.url?.startsWith("http")
           ? article.coverImage.url
-          : `${baseUrl}${article.coverImage.url}`,
-        width: article.coverImage.width,
-        height: article.coverImage.height,
-        caption: article.coverImage.caption,
+          : article.coverImage?.url?.startsWith("data:image/")
+          ? `${baseUrl}/icon.svg`
+          : `${baseUrl}${article.coverImage?.url || "/icon.svg"}`,
+        width: article.coverImage?.width || 1200,
+        height: article.coverImage?.height || 750,
+        caption: article.coverImage?.caption || article.title,
       },
     },
     {

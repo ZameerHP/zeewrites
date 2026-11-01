@@ -55,13 +55,16 @@ const DEFAULT_COVER_BY_CATEGORY: Record<CategorySlug, DiagramType> = {
 };
 
 function slugify(input: string): string {
-  return input
+  const clean = input
     .toLowerCase()
     .trim()
     .replace(/['"]/g, "")
     .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 80);
+    .replace(/^-+|-+$/g, "");
+  if (clean.length <= 80) return clean;
+  const truncated = clean.slice(0, 80);
+  const lastHyphen = truncated.lastIndexOf("-");
+  return (lastHyphen > 30 ? truncated.slice(0, lastHyphen) : truncated).replace(/^-+|-+$/g, "");
 }
 
 function countWords(text: string): number {

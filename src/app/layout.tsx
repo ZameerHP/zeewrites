@@ -23,6 +23,9 @@ const jetbrains = JetBrains_Mono({
   adjustFontFallback: true,
 });
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export const metadata: Metadata = {
   metadataBase: new URL("https://zeewrites.com"),
   title: {

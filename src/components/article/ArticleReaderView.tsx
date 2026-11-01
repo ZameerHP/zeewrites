@@ -132,13 +132,13 @@ export function ArticleReaderView({
   const tocItems = useMemo(() => {
     const items: { id: string; label: string }[] = [];
     const t = article.verifiedTakeaway;
-    if (t.symptom || t.rootCause || t.instantFix) {
+    if (t?.symptom || t?.rootCause || t?.instantFix) {
       items.push({ id: "summary-takeaway", label: "Summary & Key Takeaway" });
     }
     if (article.howToSteps && article.howToSteps.length > 0) {
       items.push({ id: "step-by-step-runbook", label: "Step-by-Step Steps" });
     }
-    article.sections.forEach((sec) => {
+    (article.sections || []).forEach((sec) => {
       items.push({ id: sec.id, label: sec.heading });
     });
     if (article.faqs && article.faqs.length > 0) {
@@ -199,14 +199,13 @@ export function ArticleReaderView({
     setTimeout(() => setCopiedKey(null), 2000);
   };
 
-  const formattedDate = new Date(article.publishedAt).toLocaleDateString(
-    "en-US",
-    {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    }
-  );
+  const formattedDate = article.publishedAt
+    ? new Date(article.publishedAt).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      })
+    : "";
 
   return (
     <div className="max-w-[1200px] mx-auto px-4 sm:px-6 py-8 sm:py-12">
@@ -278,9 +277,9 @@ export function ArticleReaderView({
           </div>
 
           {/* Summary & Key Takeaway Card */}
-          {(article.verifiedTakeaway.symptom ||
-            article.verifiedTakeaway.rootCause ||
-            article.verifiedTakeaway.instantFix) && (
+          {(article.verifiedTakeaway?.symptom ||
+            article.verifiedTakeaway?.rootCause ||
+            article.verifiedTakeaway?.instantFix) && (
           <section
             id="summary-takeaway"
             aria-label="Summary and Key Takeaway"
@@ -293,7 +292,7 @@ export function ArticleReaderView({
             </div>
 
             <div className="space-y-4 text-[16px] leading-[1.6]">
-              {article.verifiedTakeaway.symptom && (
+              {article.verifiedTakeaway?.symptom && (
               <div>
                 <span className="text-[14px] text-muted font-medium block">
                   Problem
@@ -303,7 +302,7 @@ export function ArticleReaderView({
                 </p>
               </div>
               )}
-              {article.verifiedTakeaway.rootCause && (
+              {article.verifiedTakeaway?.rootCause && (
               <div>
                 <span className="text-[14px] text-muted font-medium block">
                   Cause
@@ -313,7 +312,7 @@ export function ArticleReaderView({
                 </p>
               </div>
               )}
-              {article.verifiedTakeaway.instantFix && (
+              {article.verifiedTakeaway?.instantFix && (
               <div className="p-4 rounded-[18px] bg-badge-bg border border-hairline">
                 <span className="text-[14px] text-badge-text font-semibold block">
                   Quick Fix
