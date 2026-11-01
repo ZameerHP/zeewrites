@@ -143,7 +143,7 @@ export async function POST(req: NextRequest) {
       <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background: #ffffff;">
         <div style="border-bottom: 2px solid #4a74f0; padding-bottom: 16px; margin-bottom: 20px;">
           <h2 style="margin: 0; color: #031952; font-size: 20px;">Zee Writes — Contact Form Submission</h2>
-          <p style="margin: 4px 0 0 0; color: #64748b; font-size: 13px;">Direct message received via zeewrites.com/contact</p>
+          <p style="margin: 4px 0 0 0; color: #64748b; font-size: 13px;">Direct message received via zeewrites.blog/contact</p>
         </div>
         <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
           <tr>
