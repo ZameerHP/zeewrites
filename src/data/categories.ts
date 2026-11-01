@@ -88,7 +88,7 @@ export const CATEGORY_LIST: CategoryInfo[] = [
 
 export const DEFAULT_SITE_SETTINGS: SiteSettings = {
   siteName: "Zee Writes",
-  siteUrl: "https://zeewrites.com",
+  siteUrl: "https://zeewrites.vercel.app",
   contactEmail: "zameerpanhwer67@gmail.com",
   publisherId: "",
   adsenseMode: "verification",

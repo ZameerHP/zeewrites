@@ -1,4 +1,5 @@
 import { MetadataRoute } from "next";
+import { headers } from "next/headers";
 import { getDatabase } from "@/lib/server-store";
 import { CATEGORY_LIST } from "@/data/categories";
 
@@ -7,7 +8,18 @@ export const revalidate = 0;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const { articles, settings, deletedIds = [] } = await getDatabase();
-  const baseUrl = settings.siteUrl.replace(/\/$/, "");
+  let baseUrl = (settings.siteUrl || "https://zeewrites.vercel.app").replace(/\/$/, "");
+
+  try {
+    const h = await headers();
+    const host = h.get("x-forwarded-host") || h.get("host");
+    const proto = h.get("x-forwarded-proto") || "https";
+    if (host && !host.includes("localhost") && !host.includes("127.0.0.1")) {
+      baseUrl = `${proto}://${host}`;
+    }
+  } catch {
+    // Fallback if headers cannot be resolved
+  }
 
   const staticPages: MetadataRoute.Sitemap = [
     {
