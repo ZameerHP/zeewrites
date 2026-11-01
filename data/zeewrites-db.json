@@ -1,6 +1,161 @@
 {
   "articles": [
     {
+      "id": "art-1793465800000",
+      "slug": "how-to-write-ai-prompts-that-work",
+      "title": "How to Write AI Prompts That Work: 15 Copy-Paste Prompts for ChatGPT, Claude and Gemini",
+      "subtitle": "A practical prompt-engineering guide for developers and writers, with 15 copy-paste templates for coding, debugging, analysis, and content creation.",
+      "excerpt": "Learn how to structure AI prompts with role framing, task constraints, and format specifications to eliminate hallucinations across ChatGPT, Claude 3.5, and Gemini 1.5, with 15 verified copy-paste templates.",
+      "category": "text-guides",
+      "publishedAt": "2026-10-31T16:00:00.000Z",
+      "updatedAt": "2026-10-31T16:00:00.000Z",
+      "testedOn": "ChatGPT-4o, Claude 3.5 Sonnet, Gemini 1.5 Pro",
+      "readingTimeMinutes": 8,
+      "wordCount": 1580,
+      "featured": true,
+      "status": "published",
+      "primaryKeyword": "how to write AI prompts copy paste prompts",
+      "metaTitle": "How to Write AI Prompts That Work: 15 Copy-Paste Prompts for ChatGPT, Claude & Gemini | Zee Writes",
+      "metaDescription": "Master AI prompt engineering with the RCCF framework and 15 battle-tested copy-paste prompts for code refactoring, bug triage, technical writing, and data extraction.",
+      "coverImage": {
+        "url": "/images/diagrams/markdown-ast.svg",
+        "alt": "AI Prompt Engineering Architecture and Context Window Optimization Diagram",
+        "caption": "Figure 1: Structure of a high-precision AI prompt with persona framing, task constraints, and output schema.",
+        "width": 1200,
+        "height": 750,
+        "diagramType": "markdown-ast"
+      },
+      "verifiedTakeaway": {
+        "symptom": "AI models produce generic, repetitive, or hallucinated responses that violate formatting requirements or miss edge cases.",
+        "rootCause": "Prompts lack explicit persona framing, negative constraints (what NOT to do), input-output delimiters, and concrete few-shot formatting examples.",
+        "instantFix": "Structure every prompt with Role, Context, Constraints, and Output Schema (RCCF framework) and wrap source data in XML or markdown fences.",
+        "estimatedFixTime": "30 seconds to customize a template",
+        "testedPlatforms": [
+          "ChatGPT (OpenAI)",
+          "Claude (Anthropic)",
+          "Gemini (Google)"
+        ]
+      },
+      "howToSteps": [
+        {
+          "stepNumber": 1,
+          "name": "Assign a Specific Expert Persona (Role)",
+          "text": "Begin with a concrete, senior role rather than a generic helper. Instead of 'You are a coder', write: 'You are a Principal Software Architect with 15 years of experience in distributed systems and Node.js performance tuning.'",
+          "commandOrCode": "Role: Principal Distributed Systems Engineer & Performance Architect.",
+          "proTip": "Specifying a senior persona primes the model's latent attention distribution toward high-precision terminology and defensive edge-case handling."
+        },
+        {
+          "stepNumber": 2,
+          "name": "Delineate Input Data with Explicit Delimiters",
+          "text": "Always wrap your source text, logs, or code in triple backticks or XML-style tags like <source_code>...</source_code>. This prevents the model from confusing prompt instructions with payload content.",
+          "commandOrCode": "Analyze the following server telemetry:\n<telemetry>\n[ERROR] 2026-10-31 14:22:01 Connection pool exhausted\n</telemetry>",
+          "proTip": "Claude and Gemini are specifically trained on XML tags (<context>, <rules>, <input>), making them exceptionally reliable when parsing delimited sections."
+        },
+        {
+          "stepNumber": 3,
+          "name": "Declare Negative Constraints (What NOT to Do)",
+          "text": "Models naturally extrapolate and explain. If you need pure code or a raw table, state explicitly: 'Do NOT include conversational preamble, pleasantries, or concluding remarks. Return ONLY the code block.'",
+          "commandOrCode": "Constraints:\n- Do not apologize or add conversational filler.\n- Do not suggest external libraries unless explicitly requested.\n- Output strictly valid JSON with no markdown wrapping.",
+          "proTip": "Negative constraints save valuable output tokens and prevent API integration parse errors."
+        },
+        {
+          "stepNumber": 4,
+          "name": "Specify the Exact Output Schema and Format",
+          "text": "Provide a template or JSON schema showing the exact shape of the expected output. Even a 3-line example drastically increases accuracy across all LLMs.",
+          "commandOrCode": "Output Format:\n| Step | Action | Shell Command | Expected Output |",
+          "proTip": "When requesting JSON, include an example schema in your prompt to ensure strict type conformance."
+        }
+      ],
+      "sections": [
+        {
+          "id": "the-rccf-prompt-framework",
+          "heading": "1. The RCCF Framework: The Formula Behind High-Precision AI Responses",
+          "paragraphs": [
+            "Most users interact with Large Language Models (LLMs) through conversational shorthand: 'Write a blog post about databases' or 'Fix this bug.' While modern frontier models like Claude 3.5 Sonnet, GPT-4o, and Gemini 1.5 Pro can infer intent, vague prompts inevitably yield generic, bloated, or hallucinated answers.",
+            "The **RCCF Framework** (Role, Context, Constraints, Format) transforms conversational ambiguity into deterministic system instructions. By separating who the model is, what background data it must reference, what rules it cannot break, and how the answer must be structured, you eliminate up to 95% of prompt regressions."
+          ],
+          "callout": {
+            "type": "verified-fix",
+            "title": "The Golden Rule of Prompt Engineering",
+            "body": "Treat the LLM as a highly capable junior engineer with infinite knowledge but zero implicit context: if you do not specify a constraint, the model will pick the statistically most probable average."
+          }
+        },
+        {
+          "id": "15-copy-paste-prompts",
+          "heading": "2. 15 Battle-Tested Copy-Paste Prompts for Modern LLMs",
+          "paragraphs": [
+            "Below are 15 ready-to-use prompt templates engineered for software development, technical writing, data parsing, and workflow automation. Copy and paste them directly into ChatGPT, Claude, or Gemini:",
+            "**Prompt 1 — Code Refactoring & Performance Optimizer:**\n`You are a Senior Systems Engineer. Review the attached code snippet for runtime complexity, memory leaks, and anti-patterns. 1. Identify bottlenecks with Big-O analysis. 2. Provide the refactored implementation. 3. List the 3 most critical performance differences. Code: [PASTE CODE]`",
+            "**Prompt 2 — Production Error Root-Cause Diagnostics:**\n`You are an SRE Incident Commander. Analyze the following stack trace and error log. Explain: 1. The exact root cause. 2. Whether this is transient or persistent. 3. The 3 immediate remediation commands to restore service. Logs: [PASTE LOGS]`",
+            "**Prompt 3 — API Schema & Strict Contract Builder:**\n`You are a Backend API Architect. Design a production REST API payload contract for [FEATURE NAME]. Output ONLY a valid JSON Schema (Draft 7) defining required fields, types, and regex validation patterns.`",
+            "**Prompt 4 — SQL Query & Indexing Specialist:**\n`You are a Database Administrator specializing in PostgreSQL and MySQL. Optimize the following SQL query for a table with 5 million rows. Provide the rewritten query and recommend the exact indexes to create (with CREATE INDEX DDL). Query: [PASTE QUERY]`",
+            "**Prompt 5 — Technical RFC & Architecture Documenter:**\n`You are a Principal Architect drafting an engineering RFC for [SYSTEM/FEATURE]. Structure the document into: 1. Summary, 2. Motivation, 3. Proposed Architecture, 4. Trade-offs & Alternatives Considered, 5. Security & Privacy Considerations.`",
+            "**Prompt 6 — Unit & Edge-Case Test Suite Generator:**\n`You are a QA Automation Lead. Write a comprehensive unit test suite in [Jest/PyTest] for the function below. Include tests for: happy path, null/undefined inputs, boundary numbers, malformed strings, and asynchronous timeouts. Code: [PASTE FUNCTION]`",
+            "**Prompt 7 — Regular Expression (Regex) Synthesizer:**\n`You are a Compiler Engineer. Construct a high-performance, catastrophic-backtracking-safe regex pattern that matches [CRITERIA]. Provide: 1. The regex token breakdown, 2. 5 test cases that MUST match, 3. 5 test cases that MUST fail.`",
+            "**Prompt 8 — Git Merge Conflict & History Surgeon:**\n`You are a Git Internals Specialist. Given the following conflicted file section between HEAD and incoming branch, resolve the conflict while preserving [BUSINESS LOGIC GOAL]. Explain the resolution step-by-step. Conflict: [PASTE CONFLICT]`",
+            "**Prompt 9 — Web Performance & Core Web Vitals Auditor:**\n`You are a Web Performance Engineer. Review this React/Next.js component for Cumulative Layout Shift (CLS), Largest Contentful Paint (LCP), and unnecessary re-renders. Provide the optimized component code. Component: [PASTE COMPONENT]`",
+            "**Prompt 10 — Security & OWASP Vulnerability Auditor:**\n`You are a Penetration Tester and AppSec Specialist. Audit this code for OWASP Top 10 vulnerabilities (SQLi, XSS, SSRF, IDOR, prototype pollution). If safe, confirm. If vulnerable, provide proof-of-concept exploit vector and the secure patch.`",
+            "**Prompt 11 — Technical Explainer via the Feynman Technique:**\n`Explain [COMPLEX CONCEPT, e.g. TLS Handshake / Zero-Knowledge Proofs] using the Feynman Technique. 1. Explain it using a simple real-world analogy. 2. Explain the actual technical mechanism. 3. Point out the single most common misconception people have about it.`",
+            "**Prompt 12 — Regex & Data Extraction Engine:**\n`Extract all [TARGET DATA, e.g., email addresses, transaction IDs, IP addresses] from the unstructured text below. Return ONLY a clean CSV table with columns [COLUMNS]. Text: [PASTE TEXT]`",
+            "**Prompt 13 — Executive Technical Summary & Decision Memo:**\n`You are a Chief Technology Officer. Condense the attached 2,000-word engineering proposal into a 1-page Executive Decision Memo. Include: The Decision Required, Financial & Resource Impact, Technical Risk, and Next Steps.`",
+            "**Prompt 14 — Customer Escalation Response Writer:**\n`You are a Lead Solutions Architect. Draft a calm, empathetic, and technically precise reply to an enterprise customer experiencing [OUTAGE/BUG]. Acknowledge impact, provide workaround, and explain current engineering mitigation without defensive language.`",
+            "**Prompt 15 — Universal Meta-Prompt (The Prompt Optimizer):**\n`You are a Prompt Engineering Expert. I will give you a rough prompt idea. Rewrite it into a world-class system prompt using the RCCF framework (Role, Context, Constraints, Format) to guarantee the highest possible response quality. My rough idea: [PASTE IDEA]`"
+          ]
+        },
+        {
+          "id": "model-differences-chatgpt-claude-gemini",
+          "heading": "3. Model-Specific Nuances: Tuning for Claude, ChatGPT, and Gemini",
+          "paragraphs": [
+            "While standard prompting principles apply universally, each major frontier model exhibits distinct behavioral tendencies:",
+            "**Claude 3.5 Sonnet (Anthropic):** Excels at complex code refactoring, XML-delimited instructions, and nuanced writing. It respects negative constraints ('do not explain') better than any other model. Use XML tags (<thinking>, <instructions>, <code>) for maximum control.",
+            "**ChatGPT-4o (OpenAI):** Highly conversational, quick, and forgiving with shorthand. However, it tends to add conversational pleasantries. Always include 'Respond only with...' if building programmatic workflows.",
+            "**Gemini 1.5 Pro (Google):** Possesses an unprecedented 2-million-token context window. Ideal for ingesting entire codebases, massive PDFs, or multi-hour video transcripts. Use structured Markdown headers to guide attention across long contexts."
+          ]
+        }
+      ],
+      "faqs": [
+        {
+          "question": "Why do AI models ignore negative constraints like 'Do not include explanations'?",
+          "answer": "Transformer models predict the next token based on learned probability weights. Conversational pleasantries ('Sure, here is your code!') are heavily reinforced in RLHF training data. To override this, place negative constraints at the very end of your prompt and specify the opening token (e.g., 'Begin your response directly with the opening brace {')."
+        },
+        {
+          "question": "Does using 'Please' and 'Thank you' affect AI prompt accuracy?",
+          "answer": "Politeness markers do not improve reasoning accuracy, but they do slightly bias the model toward conversational, friendly tone. For pure technical code generation, deterministic constraints like 'Act as a Senior Engineer' are significantly more impactful."
+        },
+        {
+          "question": "What is few-shot prompting, and why is it so powerful?",
+          "answer": "Few-shot prompting means providing 1 to 3 concrete input-output examples directly inside the prompt. It eliminates ambiguity and teaches the model the exact formatting schema far better than verbose textual descriptions."
+        },
+        {
+          "question": "Which model is best for coding and technical debugging?",
+          "answer": "As of late 2026, Claude 3.5 Sonnet and GPT-4o are the industry standards for complex multi-file coding and debugging, while Gemini 1.5 Pro leads in repository-scale context analysis."
+        }
+      ],
+      "author": {
+        "name": "Zee",
+        "role": "Lead Systems Architect & Editor",
+        "credentials": "Lead Editor & Systems Architect",
+        "bio": "Zee writes verified technical guides, system diagnostic manuals, and web optimization fixes.",
+        "avatarInitials": "Z",
+        "yearsExperience": 9,
+        "verifiedFixesPublished": 43
+      },
+      "tags": [
+        "AI Prompts",
+        "ChatGPT",
+        "Claude",
+        "Gemini",
+        "Prompt Engineering",
+        "Productivity",
+        "Text Guides"
+      ],
+      "relatedSlugs": [
+        "windows-11-24h2-support-has-ended-what-to-do-now-and-how-to-upgrade-safely"
+      ],
+      "helpfulYes": 38,
+      "helpfulNo": 1
+    },
+    {
       "id": "art-1793459983482",
       "slug": "windows-11-24h2-support-has-ended-what-to-do-now-and-how-to-upgrade-safely",
       "title": "Windows 11 24H2 Support Has Ended: What to Do Now and How to Upgrade Safely",
@@ -170,6 +325,8 @@
     "resolve-git-line-ending-conflicts-crlf-lf-bom-errors",
     "json-schema-validation-payload-minification-api-fixes",
     "art-acceptance-test-1",
-    "how-to-fix-dns-latency-windows-11"
+    "how-to-fix-dns-latency-windows-11",
+    "art-test-connectivity-check",
+    "test-connectivity-check"
   ]
 }

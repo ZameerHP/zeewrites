@@ -351,6 +351,11 @@ async function run() {
       );
       assert(userArticlePreserved, "User article 'Windows 11 24H2 Support Has Ended' is safely preserved");
 
+      const aiPromptsPreserved = cmsStatus.json?.articles?.some((a) =>
+        a.title.includes("How to Write AI Prompts") || a.id === "art-1793465800000"
+      );
+      assert(aiPromptsPreserved, "User article 'How to Write AI Prompts That Work' is safely preserved");
+
       const catPage = await request("/category/how-to-fixes");
       assert(
         !catPage.text.includes("How to Fix DNS Latency on Windows 11"),

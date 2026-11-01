@@ -20,6 +20,8 @@ export function TechnicalDiagram({
   const [imgError, setImgError] = useState(false);
   const isCustomUploadedUrl =
     Boolean(image.url) &&
+    !image.url.includes("logo.jpg") &&
+    !image.url.includes("dawv") &&
     (image.url.startsWith("data:image/") ||
       image.url.startsWith("http://") ||
       image.url.startsWith("https://") ||

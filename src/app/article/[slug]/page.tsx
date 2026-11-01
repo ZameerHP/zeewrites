@@ -1,9 +1,9 @@
 import React from "react";
 import { Metadata } from "next";
+import { notFound } from "next/navigation";
 import { getDatabase } from "@/lib/server-store";
 import { generateArticleJsonLd } from "@/lib/schema";
 import { ArticleReaderView } from "@/components/article/ArticleReaderView";
-import { ArticleClientResolver } from "@/components/article/ArticleClientResolver";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -35,12 +35,22 @@ export async function generateMetadata({
   const article = articles.find((a) => {
     const s = normalizeSlug(a.slug);
     const rawS = a.slug.toLowerCase().trim();
-    return s === target || rawS === rawTarget || a.slug === slug || a.id === slug;
+    return (
+      s === target ||
+      rawS === rawTarget ||
+      a.slug === slug ||
+      a.id === slug ||
+      (target.length > 10 && s.length > 10 && (target.startsWith(s) || s.startsWith(target)))
+    );
   });
 
   if (!article) {
     return {
-      title: "Article Not Found | Zee Writes",
+      title: "Page Not Found | Zee Writes",
+      robots: {
+        index: false,
+        follow: false,
+      },
     };
   }
 
@@ -81,11 +91,17 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
   const article = articles.find((a) => {
     const s = normalizeSlug(a.slug);
     const rawS = a.slug.toLowerCase().trim();
-    return s === target || rawS === rawTarget || a.slug === slug || a.id === slug;
+    return (
+      s === target ||
+      rawS === rawTarget ||
+      a.slug === slug ||
+      a.id === slug ||
+      (target.length > 10 && s.length > 10 && (target.startsWith(s) || s.startsWith(target)))
+    );
   });
 
   if (!article) {
-    return <ArticleClientResolver slug={slug} fallbackSettings={settings} />;
+    notFound();
   }
 
   const jsonLd = generateArticleJsonLd(article, settings);
