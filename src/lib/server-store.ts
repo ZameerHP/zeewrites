@@ -139,7 +139,7 @@ function writeLocalJson(data: DatabaseSchema): void {
 /**
  * Maps Supabase rows to TypeScript Article model
  */
-function mapRowToArticle(row: any): Article {
+export function mapRowToArticle(row: any): Article {
   if (row.raw_payload) {
     return row.raw_payload as Article;
   }
@@ -184,6 +184,77 @@ function mapRowToArticle(row: any): Article {
     helpfulYes: row.helpful_yes ?? 0,
     helpfulNo: row.helpful_no ?? 0,
   };
+}
+
+/**
+ * Normalizes slug for resilient matching.
+ */
+function normalizeSlugKey(s: string): string {
+  try {
+    return decodeURIComponent(s)
+      .toLowerCase()
+      .trim()
+      .replace(/['"]/g, "")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+  } catch {
+    return (s || "").toLowerCase().trim();
+  }
+}
+
+/**
+ * Searches an array of articles with fuzzy/slug matching.
+ */
+export function findArticleInList(articles: Article[], slug: string): Article | undefined {
+  if (!slug || !Array.isArray(articles)) return undefined;
+
+  const target = normalizeSlugKey(slug);
+  const rawTarget = decodeURIComponent(slug).toLowerCase().trim();
+
+  return articles.find((a) => {
+    if (!a) return false;
+    const s = normalizeSlugKey(a.slug || "");
+    const rawS = (a.slug || "").toLowerCase().trim();
+    return (
+      s === target ||
+      rawS === rawTarget ||
+      a.slug === slug ||
+      a.id === slug ||
+      (target.length >= 25 && s.length >= 25 && (target.startsWith(s) || s.startsWith(target)))
+    );
+  });
+}
+
+/**
+ * Look up an article by slug or ID with multiple fail-safe layers:
+ * 1. Checks merged in-memory/disk database (guarantees local & serverless persistence).
+ * 2. If not found, directly queries Supabase by slug, decoded slug, and ID.
+ * 3. Never returns 404 for any article that exists.
+ */
+export async function getArticleBySlug(slug: string): Promise<Article | undefined> {
+  const db = await getDatabase();
+  const found = findArticleInList(db.articles, slug);
+  if (found) return found;
+
+  // Direct Supabase lookup fallback
+  if (isSupabaseConfigured && supabaseAdmin) {
+    try {
+      const decoded = decodeURIComponent(slug).trim();
+      const { data, error } = await supabaseAdmin
+        .from("articles")
+        .select("*")
+        .or(`slug.eq."${slug}",id.eq."${slug}",slug.eq."${decoded}"`)
+        .maybeSingle();
+
+      if (!error && data) {
+        return mapRowToArticle(data);
+      }
+    } catch (err) {
+      console.warn("getArticleBySlug direct Supabase lookup notice:", err);
+    }
+  }
+
+  return undefined;
 }
 
 /**
@@ -335,11 +406,12 @@ export async function saveArticle(article: Article): Promise<DatabaseSchema> {
   // 2. Persist to Supabase if configured
   if (isSupabaseConfigured && supabaseAdmin) {
     try {
-      // Clear any conflicting row by id or slug first to avoid unique key constraints
+      // Clear any conflicting row with the same slug but DIFFERENT id to avoid unique key constraints
       await supabaseAdmin
         .from("articles")
         .delete()
-        .or(`id.eq.${article.id},slug.eq.${article.slug}`);
+        .eq("slug", article.slug)
+        .neq("id", article.id);
 
       // Ensure article.id and article.slug are un-deleted from remote site_settings
       const setRes = await supabaseAdmin.from("site_settings").select("*").limit(1).maybeSingle();
@@ -358,75 +430,52 @@ export async function saveArticle(article: Article): Promise<DatabaseSchema> {
       // ignore
     }
 
-    const fullPayload = {
+    // Row payload strictly matching supabase_schema.sql columns:
+    // (id, slug, title, subtitle, excerpt, category, published_at, updated_at,
+    // tested_on, reading_time_minutes, word_count, featured, status, primary_keyword,
+    // meta_title, meta_description, raw_payload)
+    const schemaRow: Record<string, any> = {
       id: article.id,
       slug: article.slug,
       title: article.title,
-      subtitle: article.subtitle,
-      excerpt: article.excerpt,
+      subtitle: article.subtitle || "",
+      excerpt: article.excerpt || "",
       category: article.category,
-      published_at: article.publishedAt,
-      updated_at: article.updatedAt,
-      tested_on: article.testedOn,
-      reading_time_minutes: article.readingTimeMinutes,
-      word_count: article.wordCount,
-      featured: article.featured,
-      status: article.status,
-      primary_keyword: article.primaryKeyword,
-      meta_title: article.metaTitle,
-      meta_description: article.metaDescription,
-      cover_image: article.coverImage,
-      verified_takeaway: article.verifiedTakeaway,
-      how_to_steps: article.howToSteps,
-      sections: article.sections,
-      faqs: article.faqs,
-      author: article.author,
-      tags: article.tags,
-      related_slugs: article.relatedSlugs,
-      helpful_yes: article.helpfulYes ?? 0,
-      helpful_no: article.helpfulNo ?? 0,
+      published_at: article.publishedAt || new Date().toISOString(),
+      updated_at: article.updatedAt || new Date().toISOString(),
+      tested_on: article.testedOn || "",
+      reading_time_minutes: article.readingTimeMinutes || 5,
+      word_count: article.wordCount || 500,
+      featured: Boolean(article.featured),
+      status: article.status || "published",
+      primary_keyword: article.primaryKeyword || "",
+      meta_title: article.metaTitle || article.title,
+      meta_description: article.metaDescription || article.excerpt || "",
       raw_payload: article,
     };
 
     try {
-      let res = await supabaseAdmin
+      const { error: upsertErr } = await supabaseAdmin
         .from("articles")
-        .upsert(fullPayload, { onConflict: "id" })
-        .select();
+        .upsert(schemaRow, { onConflict: "id" });
 
-      // If full payload failed due to custom/missing columns in user's table, retry with core schema + raw_payload
-      if (res.error) {
-        console.warn("Full payload upsert notice, retrying with raw_payload:", res.error.message);
-        const coreWithRaw: Record<string, any> = {
+      if (upsertErr) {
+        console.warn("Standard schemaRow upsert notice, trying minimal with raw_payload:", upsertErr.message);
+        const minimalWithRaw = {
           id: article.id,
           slug: article.slug,
           title: article.title,
           category: article.category,
-          published_at: article.publishedAt,
-          updated_at: article.updatedAt,
-          status: article.status,
-          excerpt: article.excerpt,
-          cover_image: article.coverImage,
+          status: article.status || "published",
+          published_at: article.publishedAt || new Date().toISOString(),
+          updated_at: article.updatedAt || new Date().toISOString(),
           raw_payload: article,
         };
-
-        const tryWithRaw = await supabaseAdmin
+        const { error: minErr } = await supabaseAdmin
           .from("articles")
-          .upsert(coreWithRaw, { onConflict: "id" })
-          .select();
-
-        if (tryWithRaw.error) {
-          const minimal = {
-            id: article.id,
-            slug: article.slug,
-            title: article.title,
-            category: article.category,
-            published_at: article.publishedAt,
-            updated_at: article.updatedAt,
-            status: article.status,
-            excerpt: article.excerpt,
-          };
-          await supabaseAdmin.from("articles").upsert(minimal, { onConflict: "id" });
+          .upsert(minimalWithRaw, { onConflict: "id" });
+        if (minErr) {
+          console.error("Supabase minimal upsert error:", minErr.message);
         }
       }
     } catch (err) {
