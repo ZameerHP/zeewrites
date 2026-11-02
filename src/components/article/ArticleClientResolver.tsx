@@ -31,30 +31,64 @@ export function ArticleClientResolver({
   fallbackSettings,
 }: ArticleClientResolverProps) {
   const { articles } = useSite();
+  const [localFound, setLocalFound] = useState<Article | null>(null);
   const [fetchedArticle, setFetchedArticle] = useState<Article | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const targetSlug = cleanSlug(slug);
   const rawTarget = decodeURIComponent(slug).toLowerCase().trim();
 
+  const isMatchingArticle = (a: Article | null | undefined): boolean => {
+    if (!a || !a.slug) return false;
+    const s = cleanSlug(a.slug);
+    const rawS = (a.slug || "").toLowerCase().trim();
+    return (
+      s === targetSlug ||
+      rawS === rawTarget ||
+      a.slug === slug ||
+      a.id === slug ||
+      a.slug.replace(/-/g, "") === slug.replace(/-/g, "") ||
+      (targetSlug.length >= 25 && s.length >= 25 && (targetSlug.startsWith(s) || s.startsWith(targetSlug)))
+    );
+  };
+
   // 1. Check local client SiteProvider articles
   const matchedInStore = useMemo(() => {
-    return articles.find((a) => {
-      const s = cleanSlug(a.slug);
-      const rawS = a.slug.toLowerCase().trim();
-      return (
-        s === targetSlug ||
-        rawS === rawTarget ||
-        a.slug === slug ||
-        a.id === slug ||
-        a.slug.replace(/-/g, "") === slug.replace(/-/g, "")
-      );
-    });
+    return articles.find(isMatchingArticle) || null;
   }, [articles, targetSlug, rawTarget, slug]);
 
-  // 2. Fetch fresh from API if not yet found in store
+  // 2. Immediate direct localStorage check (hydrates on mount without waiting for Context)
   useEffect(() => {
-    if (matchedInStore) {
+    if (matchedInStore) return;
+    try {
+      const keys = ["zeewrites_user_articles_v2", "zeewrites_client_cache_v3"];
+      for (const k of keys) {
+        const raw = localStorage.getItem(k);
+        if (raw) {
+          const list: Article[] = JSON.parse(raw);
+          const found = list.find(isMatchingArticle);
+          if (found) {
+            setLocalFound(found);
+            setIsLoading(false);
+            // Auto-heal: sync to server so all devices can see it
+            fetch("/api/cms", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              credentials: "include",
+              body: JSON.stringify({ action: "upsert_article", article: found }),
+            }).catch(() => {});
+            return;
+          }
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }, [matchedInStore, targetSlug, rawTarget, slug]);
+
+  // 3. Fetch fresh from API if not yet found in store
+  useEffect(() => {
+    if (matchedInStore || localFound) {
       setIsLoading(false);
       return;
     }
@@ -62,7 +96,7 @@ export function ArticleClientResolver({
     let isMounted = true;
     async function fetchFromApi() {
       try {
-        const res = await fetch("/api/cms", {
+        const res = await fetch("/api/cms?t=" + Date.now(), {
           cache: "no-store",
           headers: { "Cache-Control": "no-cache" },
           credentials: "include",
@@ -70,17 +104,7 @@ export function ArticleClientResolver({
         if (res.ok) {
           const data = await res.json();
           if (Array.isArray(data.articles)) {
-            const found = data.articles.find((a: Article) => {
-              const s = cleanSlug(a.slug);
-              const rawS = a.slug.toLowerCase().trim();
-              return (
-                s === targetSlug ||
-                rawS === rawTarget ||
-                a.slug === slug ||
-                a.id === slug ||
-                a.slug.replace(/-/g, "") === slug.replace(/-/g, "")
-              );
-            });
+            const found = data.articles.find(isMatchingArticle);
             if (found && isMounted) {
               setFetchedArticle(found);
             }
@@ -97,9 +121,9 @@ export function ArticleClientResolver({
     return () => {
       isMounted = false;
     };
-  }, [matchedInStore, targetSlug, rawTarget, slug]);
+  }, [matchedInStore, localFound, targetSlug, rawTarget, slug]);
 
-  const activeArticle = matchedInStore || fetchedArticle;
+  const activeArticle = matchedInStore || localFound || fetchedArticle;
 
   if (activeArticle) {
     return <ArticleReaderView initialArticle={activeArticle} slug={activeArticle.slug} />;

@@ -7,7 +7,12 @@ import {
   removeArticle,
   saveSettings,
 } from "@/lib/server-store";
-import { storageMode, storageProblem } from "@/lib/supabase";
+import {
+  storageMode,
+  storageProblem,
+  isSupabaseConfigured,
+  supabaseAdmin,
+} from "@/lib/supabase";
 import {
   isAuthenticatedAdmin,
   createSessionToken,
@@ -59,6 +64,20 @@ export async function GET(req: NextRequest) {
       ? db.articles
       : db.articles.filter((a) => a.status === "published");
 
+    let supabaseDiagnostic: any = null;
+    if (isSupabaseConfigured && supabaseAdmin) {
+      try {
+        const testRes = await supabaseAdmin.from("articles").select("id, slug").limit(5);
+        supabaseDiagnostic = {
+          connected: !testRes.error,
+          error: testRes.error ? testRes.error.message : null,
+          rowsCount: testRes.data ? testRes.data.length : 0,
+        };
+      } catch (e: any) {
+        supabaseDiagnostic = { connected: false, error: e.message };
+      }
+    }
+
     return NextResponse.json(
       {
         articles,
@@ -66,6 +85,7 @@ export async function GET(req: NextRequest) {
         storageMode,
         storageProblem,
         authenticated: isAuth,
+        supabaseDiagnostic,
       },
       {
         headers: SECURITY_HEADERS,

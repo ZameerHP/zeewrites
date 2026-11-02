@@ -430,8 +430,21 @@ export function SiteProvider({
         }
 
         if (Array.isArray(data.db?.articles)) {
+          const localUserArticles = getLocalUserArticles();
           const deletedIds = getLocalDeletedIds();
-          const clean = data.db.articles.filter(
+          let merged = [...data.db.articles];
+          for (const u of localUserArticles) {
+            if (deletedIds.includes(u.id) || deletedIds.includes(u.slug)) continue;
+            const idx = merged.findIndex((a) => a.id === u.id || a.slug === u.slug);
+            if (idx >= 0) {
+              const uTime = new Date(u.updatedAt || 0).getTime();
+              const mTime = new Date(merged[idx].updatedAt || 0).getTime();
+              if (uTime >= mTime) merged[idx] = u;
+            } else {
+              merged.unshift(u);
+            }
+          }
+          const clean = merged.filter(
             (a: Article) =>
               !deletedIds.includes(a.id) &&
               !deletedIds.includes(a.slug) &&
@@ -472,8 +485,21 @@ export function SiteProvider({
         }
 
         if (Array.isArray(data.db?.articles)) {
+          const localUserArticles = getLocalUserArticles();
           const deletedIds = getLocalDeletedIds();
-          const clean = data.db.articles.filter(
+          let merged = [...data.db.articles];
+          for (const u of localUserArticles) {
+            if (deletedIds.includes(u.id) || deletedIds.includes(u.slug)) continue;
+            const idx = merged.findIndex((a) => a.id === u.id || a.slug === u.slug);
+            if (idx >= 0) {
+              const uTime = new Date(u.updatedAt || 0).getTime();
+              const mTime = new Date(merged[idx].updatedAt || 0).getTime();
+              if (uTime >= mTime) merged[idx] = u;
+            } else {
+              merged.unshift(u);
+            }
+          }
+          const clean = merged.filter(
             (a: Article) =>
               !deletedIds.includes(a.id) &&
               !deletedIds.includes(a.slug) &&

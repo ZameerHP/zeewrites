@@ -1,9 +1,9 @@
 import React from "react";
 import { Metadata } from "next";
-import { notFound } from "next/navigation";
 import { getDatabase, getArticleBySlug } from "@/lib/server-store";
 import { generateArticleJsonLd } from "@/lib/schema";
 import { ArticleReaderView } from "@/components/article/ArticleReaderView";
+import { ArticleClientResolver } from "@/components/article/ArticleClientResolver";
 import { Article } from "@/types";
 
 export const dynamic = "force-dynamic";
@@ -23,12 +23,12 @@ export async function generateMetadata({
     const article = await getArticleBySlug(slug);
 
     if (!article) {
+      const cleanTitle = decodeURIComponent(slug)
+        .replace(/[-_]+/g, " ")
+        .replace(/\b\w/g, (c) => c.toUpperCase());
       return {
-        title: "Page Not Found | Zee Writes",
-        robots: {
-          index: false,
-          follow: false,
-        },
+        title: `${cleanTitle} | Zee Writes`,
+        description: `Read ${cleanTitle} on Zee Writes.`,
       };
     }
 
@@ -61,8 +61,7 @@ export async function generateMetadata({
     };
   } catch {
     return {
-      title: "Page Not Found | Zee Writes",
-      robots: { index: false, follow: false },
+      title: "Zee Writes | Guides & Tech Fixes",
     };
   }
 }
@@ -73,7 +72,7 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
   const article = await getArticleBySlug(slug);
 
   if (!article) {
-    notFound();
+    return <ArticleClientResolver slug={slug} fallbackSettings={settings} />;
   }
 
   let jsonLd: any = null;
