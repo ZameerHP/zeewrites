@@ -18,7 +18,12 @@ import { TechnicalDiagram } from "@/components/ui/TechnicalDiagram";
 import { AdSlot } from "@/components/ui/AdSlot";
 import { ArticleCard } from "@/components/ui/ArticleCard";
 import { ZeeMark } from "@/components/ui/ZeeLogo";
-import { VALID_TLDS, normalizeWebsiteHref } from "@/lib/autolink";
+import {
+  VALID_TLDS,
+  normalizeWebsiteHref,
+  isUrlLike,
+  extractWebsiteName,
+} from "@/lib/autolink";
 
 /**
  * Render text with inline markdown formatting:
@@ -71,6 +76,10 @@ function renderFormattedText(text: string): React.ReactNode {
       const safeUrl = /^(https?:\/\/|\/|#|mailto:)/i.test(linkUrl)
         ? linkUrl
         : `https://${linkUrl}`;
+      const displayLabel = isUrlLike(linkText)
+        ? extractWebsiteName(linkUrl || linkText)
+        : linkText;
+
       if (isInternal) {
         nodes.push(
           <Link
@@ -78,7 +87,7 @@ function renderFormattedText(text: string): React.ReactNode {
             href={safeUrl}
             className="text-navy font-semibold underline underline-offset-2 hover:text-[#3a63de] transition-colors"
           >
-            {linkText}
+            {displayLabel}
           </Link>
         );
       } else {
@@ -89,13 +98,15 @@ function renderFormattedText(text: string): React.ReactNode {
             target="_blank"
             rel="noopener noreferrer"
             className="text-navy font-semibold underline underline-offset-2 hover:text-[#3a63de] transition-colors inline-flex items-center gap-0.5"
+            title={`Visit ${displayLabel}`}
           >
-            <span>{linkText}</span>
+            <span>{displayLabel}</span>
           </a>
         );
       }
     } else if (bareUrl) {
       const safeUrl = normalizeWebsiteHref(bareUrl);
+      const brandName = extractWebsiteName(bareUrl);
       nodes.push(
         <a
           key={`u-${keyIndex++}`}
@@ -103,8 +114,9 @@ function renderFormattedText(text: string): React.ReactNode {
           target="_blank"
           rel="noopener noreferrer"
           className="text-navy font-semibold underline underline-offset-2 hover:text-[#3a63de] transition-colors inline-flex items-center gap-0.5"
+          title={`Visit ${brandName}`}
         >
-          <span>{bareUrl}</span>
+          <span>{brandName}</span>
         </a>
       );
     } else if (codeText) {

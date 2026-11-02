@@ -23,7 +23,7 @@ import {
   ArrowUpRight,
   Link2,
 } from "lucide-react";
-import { autoLinkText } from "@/lib/autolink";
+import { autoLinkText, handleTypingAutoLink } from "@/lib/autolink";
 import {
   Article,
   ArticleFAQ,
@@ -955,6 +955,11 @@ export function StealthStudioVault() {
                       rows={2}
                       value={excerpt}
                       onChange={(e) => setExcerpt(e.target.value)}
+                      onBlur={(e) => {
+                        const val = e.target.value;
+                        const { text: linked, count } = autoLinkText(val);
+                        if (count > 0 && linked !== val) setExcerpt(linked);
+                      }}
                       className="w-full rounded-xl border border-obsidian/[0.12] dark:border-white/[0.12] bg-alabaster dark:bg-carbon p-3 text-[13px] text-obsidian dark:text-pearl"
                     />
                   </div>
@@ -1121,6 +1126,11 @@ export function StealthStudioVault() {
                     rows={2}
                     value={symptom}
                     onChange={(e) => setSymptom(e.target.value)}
+                    onBlur={(e) => {
+                      const val = e.target.value;
+                      const { text: linked, count } = autoLinkText(val);
+                      if (count > 0 && linked !== val) setSymptom(linked);
+                    }}
                     className="w-full rounded-xl border border-obsidian/[0.12] dark:border-white/[0.12] bg-alabaster dark:bg-carbon p-2.5 text-[13px] text-obsidian dark:text-pearl"
                   />
                 </div>
@@ -1132,6 +1142,11 @@ export function StealthStudioVault() {
                     rows={2}
                     value={rootCause}
                     onChange={(e) => setRootCause(e.target.value)}
+                    onBlur={(e) => {
+                      const val = e.target.value;
+                      const { text: linked, count } = autoLinkText(val);
+                      if (count > 0 && linked !== val) setRootCause(linked);
+                    }}
                     className="w-full rounded-xl border border-obsidian/[0.12] dark:border-white/[0.12] bg-alabaster dark:bg-carbon p-2.5 text-[13px] text-obsidian dark:text-pearl"
                   />
                 </div>
@@ -1143,6 +1158,11 @@ export function StealthStudioVault() {
                     rows={2}
                     value={instantFix}
                     onChange={(e) => setInstantFix(e.target.value)}
+                    onBlur={(e) => {
+                      const val = e.target.value;
+                      const { text: linked, count } = autoLinkText(val);
+                      if (count > 0 && linked !== val) setInstantFix(linked);
+                    }}
                     className="w-full rounded-xl border border-emerald-signal/30 bg-emerald-signal/[0.04] p-2.5 text-[13px] text-obsidian dark:text-pearl"
                   />
                 </div>
@@ -1170,6 +1190,17 @@ export function StealthStudioVault() {
                                 i === idx ? { ...item, name: val } : item
                               )
                             );
+                          }}
+                          onBlur={(e) => {
+                            const val = e.target.value;
+                            const { text: linked, count } = autoLinkText(val);
+                            if (count > 0 && linked !== val) {
+                              setHowToSteps((prev) =>
+                                prev.map((item, i) =>
+                                  i === idx ? { ...item, name: linked } : item
+                                )
+                              );
+                            }
                           }}
                           className="flex-1 bg-transparent font-display font-bold text-sm text-obsidian dark:text-pearl focus:outline-none placeholder:text-charcoal/40 dark:placeholder:text-cool-slate/40"
                         />
@@ -1199,13 +1230,13 @@ export function StealthStudioVault() {
                           Step Instructions / Action Details
                         </label>
                         <span className="text-[11px] text-muted font-sans">
-                          Press Enter twice for separate paragraphs • Use &quot;- &quot; for bullet lists
+                          Press Enter twice for separate paragraphs • URLs auto-convert to clickable website names
                         </span>
                       </div>
                       <textarea
                         rows={4}
                         value={st.text}
-                        placeholder="Explain what the reader needs to do...&#10;&#10;Press Enter twice to start a new paragraph with clean spacing on the live website."
+                        placeholder="Explain what the reader needs to do...&#10;&#10;Press Enter twice to start a new paragraph with clean spacing on the live website. URLs will automatically turn into clickable website names."
                         onChange={(e) => {
                           const val = e.target.value;
                           setHowToSteps((prev) =>
@@ -1213,6 +1244,36 @@ export function StealthStudioVault() {
                               i === idx ? { ...item, text: val } : item
                             )
                           );
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === " " || e.key === "Enter") {
+                            const el = e.currentTarget;
+                            const cursorPos = el.selectionStart ?? st.text.length;
+                            const delimiter = e.key === "Enter" ? "\n" : " ";
+                            const res = handleTypingAutoLink(st.text, cursorPos, delimiter);
+                            if (res) {
+                              e.preventDefault();
+                              setHowToSteps((prev) =>
+                                prev.map((item, i) =>
+                                  i === idx ? { ...item, text: res.newText } : item
+                                )
+                              );
+                              requestAnimationFrame(() => {
+                                el.setSelectionRange(res.newCursor, res.newCursor);
+                              });
+                            }
+                          }
+                        }}
+                        onBlur={(e) => {
+                          const val = e.target.value;
+                          const { text: linked, count } = autoLinkText(val);
+                          if (count > 0 && linked !== val) {
+                            setHowToSteps((prev) =>
+                              prev.map((item, i) =>
+                                i === idx ? { ...item, text: linked } : item
+                              )
+                            );
+                          }
                         }}
                         className="w-full rounded-xl border border-obsidian/[0.1] dark:border-white/[0.1] bg-ivory dark:bg-carbon-card p-3 text-[13.5px] text-obsidian dark:text-pearl font-sans leading-relaxed resize-y focus:outline-none focus:ring-1 focus:ring-navy whitespace-pre-wrap"
                       />
@@ -1254,6 +1315,17 @@ export function StealthStudioVault() {
                                 i === idx ? { ...item, proTip: val } : item
                               )
                             );
+                          }}
+                          onBlur={(e) => {
+                            const val = e.target.value;
+                            const { text: linked, count } = autoLinkText(val);
+                            if (count > 0 && linked !== val) {
+                              setHowToSteps((prev) =>
+                                prev.map((item, i) =>
+                                  i === idx ? { ...item, proTip: linked } : item
+                                )
+                              );
+                            }
                           }}
                           className="w-full rounded-lg border border-obsidian/[0.1] dark:border-white/[0.1] bg-ivory dark:bg-carbon-card px-3 py-2 text-[12.5px] text-obsidian dark:text-pearl focus:outline-none"
                         />
@@ -1359,6 +1431,18 @@ export function StealthStudioVault() {
                             i === idx ? { ...item, paragraphs: paras } : item
                           )
                         );
+                      }}
+                      onBlur={(e) => {
+                        const val = e.target.value;
+                        const { text: linked, count } = autoLinkText(val);
+                        if (count > 0 && linked !== val) {
+                          const paras = linked.split(/\n\s*\n/).filter(Boolean);
+                          setSections((prev) =>
+                            prev.map((item, i) =>
+                              i === idx ? { ...item, paragraphs: paras } : item
+                            )
+                          );
+                        }
                       }}
                       placeholder="Write paragraphs separated by a blank line..."
                       className="w-full rounded-xl border border-obsidian/[0.1] dark:border-white/[0.1] bg-ivory dark:bg-carbon-card p-3 font-sans text-sm leading-relaxed text-obsidian dark:text-pearl"

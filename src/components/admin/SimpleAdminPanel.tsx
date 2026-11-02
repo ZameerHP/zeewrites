@@ -1048,6 +1048,11 @@ export function SimpleAdminPanel({ onLock, onOpenAdvanced }: SimpleAdminPanelPro
                 <textarea
                   value={summary}
                   onChange={(e) => setSummary(e.target.value)}
+                  onBlur={(e) => {
+                    const val = e.target.value;
+                    const { text: linked, count } = autoLinkText(val);
+                    if (count > 0 && linked !== val) setSummary(linked);
+                  }}
                   rows={2}
                   placeholder="What will the reader learn or fix?"
                   className={inputCls}
@@ -1186,7 +1191,7 @@ export function SimpleAdminPanel({ onLock, onOpenAdvanced }: SimpleAdminPanelPro
                 <div className="space-y-2">
                   <div className="flex items-center justify-between text-[11.5px] text-muted px-1">
                     <span>
-                      💡 <b>Auto-Link Active:</b> Any website name (e.g. <code>google.com</code>, <code>github.com</code>, <code>resend.com</code>) automatically becomes a clickable link when you type space or save.
+                      💡 <b>Auto-Link Active:</b> Any website URL (e.g. <code>resend.com/domains</code>, <code>github.com</code>) automatically turns into a clean, clickable website name!
                     </span>
                   </div>
                   <textarea
@@ -1195,6 +1200,13 @@ export function SimpleAdminPanel({ onLock, onOpenAdvanced }: SimpleAdminPanelPro
                     onChange={(e) => setContent(e.target.value)}
                     onPaste={handleSmartPaste}
                     onKeyDown={handleContentKeyDown}
+                    onBlur={(e) => {
+                      if (autoLinkWebsites) {
+                        const val = e.target.value;
+                        const { text: linked, count } = autoLinkText(val);
+                        if (count > 0 && linked !== val) setContent(linked);
+                      }
+                    }}
                     rows={18}
                     placeholder={
                       "Paste any raw article from ChatGPT, Claude, Docs, Word or .txt here...\n\nSmart Paste will instantly detect sections, headings, commands, code blocks, lists, and callouts."
@@ -1237,6 +1249,13 @@ export function SimpleAdminPanel({ onLock, onOpenAdvanced }: SimpleAdminPanelPro
                       onChange={(e) => setContent(e.target.value)}
                       onPaste={handleSmartPaste}
                       onKeyDown={handleContentKeyDown}
+                      onBlur={(e) => {
+                        if (autoLinkWebsites) {
+                          const val = e.target.value;
+                          const { text: linked, count } = autoLinkText(val);
+                          if (count > 0 && linked !== val) setContent(linked);
+                        }
+                      }}
                       rows={20}
                       className={`${inputCls} font-sans leading-[1.7] min-h-[500px]`}
                     />
@@ -1292,6 +1311,15 @@ export function SimpleAdminPanel({ onLock, onOpenAdvanced }: SimpleAdminPanelPro
                               arr.map((x, j) => (j === i ? { ...x, name: e.target.value } : x))
                             )
                           }
+                          onBlur={(e) => {
+                            const val = e.target.value;
+                            const { text: linked, count } = autoLinkText(val);
+                            if (count > 0 && linked !== val) {
+                              setSteps((arr) =>
+                                arr.map((x, j) => (j === i ? { ...x, name: linked } : x))
+                              );
+                            }
+                          }}
                           placeholder={`Step ${i + 1} title (e.g. Open Settings)`}
                           className={`${inputCls} py-2.5 font-medium`}
                         />
@@ -1313,12 +1341,38 @@ export function SimpleAdminPanel({ onLock, onOpenAdvanced }: SimpleAdminPanelPro
                               arr.map((x, j) => (j === i ? { ...x, text: e.target.value } : x))
                             )
                           }
+                          onKeyDown={(e) => {
+                            if (autoLinkWebsites && (e.key === " " || e.key === "Enter")) {
+                              const el = e.currentTarget;
+                              const cursorPos = el.selectionStart ?? st.text.length;
+                              const delimiter = e.key === "Enter" ? "\n" : " ";
+                              const res = handleTypingAutoLink(st.text, cursorPos, delimiter);
+                              if (res) {
+                                e.preventDefault();
+                                setSteps((arr) =>
+                                  arr.map((x, j) => (j === i ? { ...x, text: res.newText } : x))
+                                );
+                                requestAnimationFrame(() => {
+                                  el.setSelectionRange(res.newCursor, res.newCursor);
+                                });
+                              }
+                            }
+                          }}
+                          onBlur={(e) => {
+                            const val = e.target.value;
+                            const { text: linked, count } = autoLinkText(val);
+                            if (count > 0 && linked !== val) {
+                              setSteps((arr) =>
+                                arr.map((x, j) => (j === i ? { ...x, text: linked } : x))
+                              );
+                            }
+                          }}
                           rows={4}
-                          placeholder="What should the reader do?&#10;&#10;Press Enter twice for a new paragraph. Use '-' for bullet lists."
+                          placeholder="What should the reader do?&#10;&#10;Press Enter twice for a new paragraph. URLs will automatically turn into clickable website names."
                           className={`${inputCls} whitespace-pre-wrap leading-relaxed`}
                         />
                         <p className="text-[11px] text-muted pl-1">
-                          💡 Enter twice creates spaced paragraphs on the live website. Use &quot;- &quot; for bullet lists.
+                          💡 Enter twice creates spaced paragraphs. Any website URL automatically transforms into a clean, clickable website name.
                         </p>
                       </div>
 
@@ -1344,6 +1398,15 @@ export function SimpleAdminPanel({ onLock, onOpenAdvanced }: SimpleAdminPanelPro
                               )
                             )
                           }
+                          onBlur={(e) => {
+                            const val = e.target.value;
+                            const { text: linked, count } = autoLinkText(val);
+                            if (count > 0 && linked !== val) {
+                              setSteps((arr) =>
+                                arr.map((x, j) => (j === i ? { ...x, proTip: linked } : x))
+                              );
+                            }
+                          }}
                           placeholder="Pro tip or warning (optional)"
                           className={`${inputCls} text-[12.5px]`}
                         />
@@ -1543,13 +1606,40 @@ export function SimpleAdminPanel({ onLock, onOpenAdvanced }: SimpleAdminPanelPro
                     Summary box (shown above the post if filled):
                   </p>
                   <Field label="Problem">
-                    <input value={problem} onChange={(e) => setProblem(e.target.value)} className={`${inputCls} py-2.5`} />
+                    <input
+                      value={problem}
+                      onChange={(e) => setProblem(e.target.value)}
+                      onBlur={(e) => {
+                        const val = e.target.value;
+                        const { text: linked, count } = autoLinkText(val);
+                        if (count > 0 && linked !== val) setProblem(linked);
+                      }}
+                      className={`${inputCls} py-2.5`}
+                    />
                   </Field>
                   <Field label="Cause">
-                    <input value={cause} onChange={(e) => setCause(e.target.value)} className={`${inputCls} py-2.5`} />
+                    <input
+                      value={cause}
+                      onChange={(e) => setCause(e.target.value)}
+                      onBlur={(e) => {
+                        const val = e.target.value;
+                        const { text: linked, count } = autoLinkText(val);
+                        if (count > 0 && linked !== val) setCause(linked);
+                      }}
+                      className={`${inputCls} py-2.5`}
+                    />
                   </Field>
                   <Field label="Quick fix">
-                    <input value={quickFix} onChange={(e) => setQuickFix(e.target.value)} className={`${inputCls} py-2.5`} />
+                    <input
+                      value={quickFix}
+                      onChange={(e) => setQuickFix(e.target.value)}
+                      onBlur={(e) => {
+                        const val = e.target.value;
+                        const { text: linked, count } = autoLinkText(val);
+                        if (count > 0 && linked !== val) setQuickFix(linked);
+                      }}
+                      className={`${inputCls} py-2.5`}
+                    />
                   </Field>
                   <Field label="Custom link" hint="Leave empty to create it from the title.">
                     <input
