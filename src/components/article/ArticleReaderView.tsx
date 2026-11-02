@@ -9,6 +9,7 @@ import {
   Copy,
   Check,
   ChevronDown,
+  Terminal,
 } from "lucide-react";
 import { Article } from "@/types";
 import { CATEGORIES } from "@/data/categories";
@@ -210,6 +211,135 @@ function renderContentBlock(text: string, keyPrefix: string): React.ReactNode {
     <p key={keyPrefix} className="font-sans text-[18px] leading-[1.75] text-secondary">
       {renderFormattedText(text)}
     </p>
+  );
+}
+
+/**
+ * Render structured step body text:
+ * - Parses double newlines (\n\n) into separated, disciplined paragraphs with vertical margin
+ * - Preserves soft single line breaks (\n) using whitespace-pre-line
+ * - Automatically detects and styles bullet lists (- item, * item, • item)
+ * - Automatically detects and styles numbered sub-lists (1. item, 2. item)
+ * - Keeps inline markdown: bold, italic, code, links, highlights
+ */
+function renderStepBody(rawText: string, stepKey: string): React.ReactNode {
+  if (!rawText) return null;
+
+  // Split by double newlines into independent blocks/paragraphs
+  const blocks = rawText
+    .split(/\r?\n\s*\r?\n/)
+    .map((b) => b.trim())
+    .filter((b) => b.length > 0);
+
+  if (blocks.length === 0) return null;
+
+  return (
+    <div className="space-y-3.5 text-secondary">
+      {blocks.map((block, bIdx) => {
+        const blockKey = `${stepKey}-b${bIdx}`;
+        const lines = block
+          .split(/\r?\n/)
+          .map((l) => l.trim())
+          .filter((l) => l.length > 0);
+
+        // Check if block contains list items
+        const hasBullets = lines.some((l) => /^[-*•–✔✓]\s+/.test(l));
+        const hasNumbered = lines.some((l) => /^\d+[\.\)]\s+/.test(l));
+
+        if (hasBullets && !hasNumbered) {
+          const introLines: string[] = [];
+          const bulletLines: string[] = [];
+          let reachedBullets = false;
+
+          for (const line of lines) {
+            if (/^[-*•–✔✓]\s+/.test(line)) {
+              reachedBullets = true;
+              bulletLines.push(line.replace(/^[-*•–✔✓]\s+/, ""));
+            } else if (!reachedBullets) {
+              introLines.push(line);
+            } else {
+              bulletLines.push(line);
+            }
+          }
+
+          return (
+            <div key={blockKey} className="space-y-2.5">
+              {introLines.length > 0 && (
+                <p className="font-sans text-[17px] sm:text-[18px] leading-[1.8] text-secondary whitespace-pre-line">
+                  {renderFormattedText(introLines.join("\n"))}
+                </p>
+              )}
+              <ul className="space-y-2 pl-2">
+                {bulletLines.map((bText, bIdx2) => (
+                  <li
+                    key={bIdx2}
+                    className="flex items-start gap-2.5 text-[16px] sm:text-[17.5px] leading-[1.7] text-secondary"
+                  >
+                    <span className="h-1.5 w-1.5 rounded-full bg-navy/80 dark:bg-accent shrink-0 mt-2.5" />
+                    <span className="flex-1 whitespace-pre-line">
+                      {renderFormattedText(bText)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          );
+        }
+
+        if (hasNumbered && !hasBullets) {
+          const introLines: string[] = [];
+          const numberedLines: { num: string; text: string }[] = [];
+          let reachedNumbered = false;
+
+          for (const line of lines) {
+            const numMatch = line.match(/^(\d+)[\.\)]\s+(.*)$/);
+            if (numMatch) {
+              reachedNumbered = true;
+              numberedLines.push({ num: numMatch[1], text: numMatch[2] });
+            } else if (!reachedNumbered) {
+              introLines.push(line);
+            } else {
+              numberedLines.push({ num: `${numberedLines.length + 1}`, text: line });
+            }
+          }
+
+          return (
+            <div key={blockKey} className="space-y-2.5">
+              {introLines.length > 0 && (
+                <p className="font-sans text-[17px] sm:text-[18px] leading-[1.8] text-secondary whitespace-pre-line">
+                  {renderFormattedText(introLines.join("\n"))}
+                </p>
+              )}
+              <ol className="space-y-2 pl-2">
+                {numberedLines.map((nItem, nIdx) => (
+                  <li
+                    key={nIdx}
+                    className="flex items-start gap-2.5 text-[16px] sm:text-[17.5px] leading-[1.7] text-secondary"
+                  >
+                    <span className="font-mono text-[13px] font-semibold text-navy dark:text-accent shrink-0 mt-1 min-w-[1.2rem]">
+                      {nItem.num}.
+                    </span>
+                    <span className="flex-1 whitespace-pre-line">
+                      {renderFormattedText(nItem.text)}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          );
+        }
+
+        // Standard paragraph block (supports single enter breaks via whitespace-pre-line)
+        return (
+          <p
+            key={blockKey}
+            className="font-sans text-[17px] sm:text-[18px] leading-[1.8] text-secondary whitespace-pre-line"
+          >
+            {renderFormattedText(block)}
+          </p>
+        );
+      })}
+    </div>
   );
 }
 
@@ -445,81 +575,106 @@ export function ArticleReaderView({
           {article.howToSteps && article.howToSteps.length > 0 && (
             <section
               id="step-by-step-runbook"
-              className="space-y-6 pt-2 max-w-[68ch]"
+              className="space-y-6 pt-4 max-w-[68ch]"
             >
-              <h2 className="font-sans font-medium text-[clamp(26px,3.5vw,36px)] leading-[1.15] tracking-[-0.02em] text-ink">
-                Step-by-Step Instructions
-              </h2>
+              <div className="space-y-2 border-b border-hairline/80 pb-4">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-badge-bg border border-hairline text-xs font-mono font-medium text-muted uppercase tracking-wider">
+                  <span>Actionable Runbook</span>
+                  <span className="h-1 w-1 rounded-full bg-muted/60" />
+                  <span>{article.howToSteps.length} {article.howToSteps.length === 1 ? "Step" : "Steps"}</span>
+                </div>
+                <h2 className="font-sans font-bold text-[clamp(26px,3.5vw,36px)] leading-[1.15] tracking-[-0.025em] text-ink">
+                  Step-by-Step Instructions
+                </h2>
+              </div>
 
-              <div className="space-y-4">
+              <div className="space-y-5">
                 {article.howToSteps.map((step) => {
                   const stepCopyKey = `step-${step.stepNumber}`;
                   return (
                     <div
                       key={step.stepNumber}
-                      className="rounded-[24px] bg-surface border border-hairline shadow-2 p-6 sm:p-7 space-y-4"
+                      id={`step-${step.stepNumber}`}
+                      className="rounded-[22px] bg-surface border border-hairline shadow-2 overflow-hidden transition-all duration-200 hover:border-hairline/90"
                     >
-                      <div className="flex items-start gap-3.5">
-                        <span className="h-8 w-8 rounded-full bg-badge-bg text-badge-text text-[14px] font-semibold flex items-center justify-center shrink-0 mt-0.5">
+                      {/* Step Header */}
+                      <div className="px-6 py-5 border-b border-hairline bg-page/50 flex items-start gap-4">
+                        <div className="h-9 w-9 rounded-xl bg-ink text-white dark:bg-white dark:text-ink font-mono text-[15px] font-bold flex items-center justify-center shrink-0 shadow-sm mt-0.5">
                           {step.stepNumber}
-                        </span>
-                        <h3 className="font-sans font-semibold text-[20px] leading-[1.3] text-ink">
-                          {step.name}
-                        </h3>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-[11.5px] font-mono uppercase tracking-wider text-muted font-semibold mb-1">
+                            Step {step.stepNumber} of {article.howToSteps.length}
+                          </div>
+                          <h3 className="font-sans font-bold text-[20px] sm:text-[22px] leading-[1.3] text-ink tracking-[-0.015em]">
+                            {step.name}
+                          </h3>
+                        </div>
                       </div>
 
-                      <p className="font-sans text-[18px] leading-[1.75] text-secondary">
-                        {renderFormattedText(step.text)}
-                      </p>
+                      {/* Step Body */}
+                      <div className="p-6 sm:p-7 space-y-4">
+                        {/* Disciplined Step Text with Spaced Paragraphs and List Support */}
+                        {renderStepBody(step.text, `step-${step.stepNumber}`)}
 
-                      {step.commandOrCode && (
-                        <div className="rounded-[18px] bg-[#f1f5fe] dark:bg-[#0d152c] border border-hairline overflow-hidden">
-                          <div className="px-4 py-2.5 border-b border-hairline flex items-center justify-between text-[13px] text-muted">
-                            <span className="font-medium">Command</span>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                copyCommand(
-                                  step.commandOrCode!,
-                                  stepCopyKey,
-                                  `Step ${step.stepNumber} command copied`
-                                )
-                              }
-                              className="inline-flex items-center gap-1.5 px-3 min-h-[34px] rounded-full bg-surface text-ink border border-hairline text-[13px] font-medium hover:text-navy transition-colors duration-micro"
-                            >
-                              {copiedKey === stepCopyKey ? (
-                                <>
-                                  <Check
-                                    className="w-3.5 h-3.5 text-navy"
-                                    strokeWidth={1.5}
-                                  />
-                                  <span>Copied</span>
-                                </>
-                              ) : (
-                                <>
-                                  <Copy
-                                    className="w-3.5 h-3.5"
-                                    strokeWidth={1.5}
-                                  />
-                                  <span>Copy</span>
-                                </>
-                              )}
-                            </button>
+                        {/* Step Command Box */}
+                        {step.commandOrCode && (
+                          <div className="rounded-[16px] bg-[#f1f5fe] dark:bg-[#0d152c] border border-hairline overflow-hidden mt-4">
+                            <div className="px-4 py-2.5 border-b border-hairline flex items-center justify-between text-[13px] text-muted bg-surface/50">
+                              <div className="flex items-center gap-2 font-mono font-medium text-ink">
+                                <Terminal className="w-3.5 h-3.5 text-navy dark:text-accent" />
+                                <span>Command / Execution</span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  copyCommand(
+                                    step.commandOrCode!,
+                                    stepCopyKey,
+                                    `Step ${step.stepNumber} command copied`
+                                  )
+                                }
+                                className="inline-flex items-center gap-1.5 px-3 min-h-[32px] rounded-lg bg-surface text-ink border border-hairline text-[12.5px] font-medium hover:text-navy transition-colors duration-micro cursor-pointer shadow-xs"
+                              >
+                                {copiedKey === stepCopyKey ? (
+                                  <>
+                                    <Check
+                                      className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400"
+                                      strokeWidth={2}
+                                    />
+                                    <span className="text-emerald-600 dark:text-emerald-400 font-semibold">
+                                      Copied
+                                    </span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Copy
+                                      className="w-3.5 h-3.5"
+                                      strokeWidth={1.5}
+                                    />
+                                    <span>Copy</span>
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                            <pre className="p-4 font-mono text-[13.5px] sm:text-[14px] leading-[1.65] overflow-x-auto text-ink whitespace-pre-wrap break-all sm:break-normal">
+                              <code>{step.commandOrCode}</code>
+                            </pre>
                           </div>
-                          <pre className="p-4 font-mono text-[14px] leading-[1.65] overflow-x-auto text-ink">
-                            <code>{step.commandOrCode}</code>
-                          </pre>
-                        </div>
-                      )}
+                        )}
 
-                      {step.proTip && (
-                        <div className="rounded-[14px] bg-badge-bg border border-hairline px-4 py-3 text-[15px] text-secondary leading-[1.6]">
-                          <strong className="font-semibold text-navy">
-                            Tip:{" "}
-                          </strong>
-                          <span>{renderFormattedText(step.proTip)}</span>
-                        </div>
-                      )}
+                        {/* Step Pro Tip */}
+                        {step.proTip && (
+                          <div className="rounded-[14px] bg-badge-bg/90 border-l-4 border-navy dark:border-accent p-4 text-[15px] sm:text-[15.5px] text-secondary leading-[1.65] mt-4">
+                            <strong className="font-semibold text-navy dark:text-accent font-mono text-xs uppercase tracking-wider block mb-1">
+                              Pro Tip
+                            </strong>
+                            <div className="whitespace-pre-line">
+                              {renderFormattedText(step.proTip)}
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   );
                 })}

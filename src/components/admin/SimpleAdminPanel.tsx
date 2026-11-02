@@ -1189,11 +1189,11 @@ export function SimpleAdminPanel({ onLock, onOpenAdvanced }: SimpleAdminPanelPro
                   Great for tutorials and fixes. Each step shows as a numbered card at the top of the post.
                 </p>
               ) : (
-                <ol className="space-y-3">
+                <ol className="space-y-3.5">
                   {steps.map((st, i) => (
-                    <li key={i} className="rounded-[14px] border border-hairline p-4 space-y-2.5 bg-page">
-                      <div className="flex items-center gap-2">
-                        <span className="h-7 w-7 shrink-0 rounded-full bg-ink text-white text-[13px] font-semibold flex items-center justify-center">
+                    <li key={i} className="rounded-[16px] border border-hairline p-4 sm:p-5 space-y-3 bg-page shadow-xs">
+                      <div className="flex items-center gap-2.5">
+                        <span className="h-7 w-7 shrink-0 rounded-full bg-ink text-white dark:bg-white dark:text-ink text-[13px] font-semibold flex items-center justify-center">
                           {i + 1}
                         </span>
                         <input
@@ -1203,42 +1203,62 @@ export function SimpleAdminPanel({ onLock, onOpenAdvanced }: SimpleAdminPanelPro
                               arr.map((x, j) => (j === i ? { ...x, name: e.target.value } : x))
                             )
                           }
-                          placeholder="Step title, e.g. Open Settings"
-                          className={`${inputCls} py-2.5`}
+                          placeholder={`Step ${i + 1} title (e.g. Open Settings)`}
+                          className={`${inputCls} py-2.5 font-medium`}
                         />
                         <button
                           type="button"
                           onClick={() => setSteps((arr) => arr.filter((_, j) => j !== i))}
                           aria-label="Remove step"
-                          className="w-9 h-9 shrink-0 rounded-full border border-hairline text-muted hover:text-red-600 flex items-center justify-center"
+                          className="w-9 h-9 shrink-0 rounded-full border border-hairline text-muted hover:text-red-600 flex items-center justify-center transition-colors"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
-                      <textarea
-                        value={st.text}
-                        onChange={(e) =>
-                          setSteps((arr) =>
-                            arr.map((x, j) => (j === i ? { ...x, text: e.target.value } : x))
-                          )
-                        }
-                        rows={2}
-                        placeholder="What should the reader do?"
-                        className={inputCls}
-                      />
-                      <textarea
-                        value={st.commandOrCode || ""}
-                        onChange={(e) =>
-                          setSteps((arr) =>
-                            arr.map((x, j) =>
-                              j === i ? { ...x, commandOrCode: e.target.value } : x
+
+                      <div className="space-y-1">
+                        <textarea
+                          value={st.text}
+                          onChange={(e) =>
+                            setSteps((arr) =>
+                              arr.map((x, j) => (j === i ? { ...x, text: e.target.value } : x))
                             )
-                          )
-                        }
-                        rows={1}
-                        placeholder="Command to copy (optional)"
-                        className={`${inputCls} font-mono text-[13px]`}
-                      />
+                          }
+                          rows={4}
+                          placeholder="What should the reader do?&#10;&#10;Press Enter twice for a new paragraph. Use '-' for bullet lists."
+                          className={`${inputCls} whitespace-pre-wrap leading-relaxed`}
+                        />
+                        <p className="text-[11px] text-muted pl-1">
+                          💡 Enter twice creates spaced paragraphs on the live website. Use &quot;- &quot; for bullet lists.
+                        </p>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                        <input
+                          value={st.commandOrCode || ""}
+                          onChange={(e) =>
+                            setSteps((arr) =>
+                              arr.map((x, j) =>
+                                j === i ? { ...x, commandOrCode: e.target.value } : x
+                              )
+                            )
+                          }
+                          placeholder="Command to copy (optional)"
+                          className={`${inputCls} font-mono text-[12.5px]`}
+                        />
+                        <input
+                          value={st.proTip || ""}
+                          onChange={(e) =>
+                            setSteps((arr) =>
+                              arr.map((x, j) =>
+                                j === i ? { ...x, proTip: e.target.value } : x
+                              )
+                            )
+                          }
+                          placeholder="Pro tip or warning (optional)"
+                          className={`${inputCls} text-[12.5px]`}
+                        />
+                      </div>
                     </li>
                   ))}
                 </ol>

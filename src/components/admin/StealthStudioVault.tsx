@@ -1070,26 +1070,32 @@ export function StealthStudioVault() {
                 </div>
               </div>
 
-              <div className="space-y-3 pt-2">
+              <div className="space-y-4 pt-2">
                 {howToSteps.map((st, idx) => (
                   <div
                     key={idx}
-                    className="rounded-xl border border-obsidian/[0.08] dark:border-white/[0.08] bg-alabaster dark:bg-carbon p-3.5 space-y-2"
+                    className="rounded-xl border border-obsidian/[0.12] dark:border-white/[0.12] bg-alabaster dark:bg-carbon p-4 sm:p-5 space-y-3.5 shadow-xs"
                   >
-                    <div className="flex items-center justify-between gap-2">
-                      <input
-                        type="text"
-                        value={st.name}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setHowToSteps((prev) =>
-                            prev.map((item, i) =>
-                              i === idx ? { ...item, name: val } : item
-                            )
-                          );
-                        }}
-                        className="flex-1 bg-transparent font-display font-bold text-sm text-obsidian dark:text-pearl focus:outline-none"
-                      />
+                    <div className="flex items-center justify-between gap-3 border-b border-obsidian/[0.06] dark:border-white/[0.06] pb-2.5">
+                      <div className="flex items-center gap-2.5 flex-1">
+                        <span className="h-6 w-6 rounded-md bg-navy/10 text-navy dark:bg-navy/30 dark:text-accent text-[12px] font-mono font-bold flex items-center justify-center shrink-0">
+                          {idx + 1}
+                        </span>
+                        <input
+                          type="text"
+                          value={st.name}
+                          placeholder={`Step ${idx + 1} title (e.g. Inspect the Code Points)`}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setHowToSteps((prev) =>
+                              prev.map((item, i) =>
+                                i === idx ? { ...item, name: val } : item
+                              )
+                            );
+                          }}
+                          className="flex-1 bg-transparent font-display font-bold text-sm text-obsidian dark:text-pearl focus:outline-none placeholder:text-charcoal/40 dark:placeholder:text-cool-slate/40"
+                        />
+                      </div>
                       <button
                         type="button"
                         onClick={() =>
@@ -1102,24 +1108,79 @@ export function StealthStudioVault() {
                               }))
                           )
                         }
-                        className="text-charcoal hover:text-red-500"
+                        className="text-charcoal/70 hover:text-red-500 transition-colors p-1"
+                        title="Delete this step"
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
-                    <textarea
-                      rows={2}
-                      value={st.text}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setHowToSteps((prev) =>
-                          prev.map((item, i) =>
-                            i === idx ? { ...item, text: val } : item
-                          )
-                        );
-                      }}
-                      className="w-full rounded-lg border border-obsidian/[0.1] dark:border-white/[0.1] bg-ivory dark:bg-carbon-card p-2 text-[13px] text-obsidian dark:text-pearl"
-                    />
+
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5 flex-wrap gap-1">
+                        <label className="text-[12px] font-mono uppercase text-charcoal dark:text-cool-slate">
+                          Step Instructions / Action Details
+                        </label>
+                        <span className="text-[11px] text-muted font-sans">
+                          Press Enter twice for separate paragraphs • Use &quot;- &quot; for bullet lists
+                        </span>
+                      </div>
+                      <textarea
+                        rows={4}
+                        value={st.text}
+                        placeholder="Explain what the reader needs to do...&#10;&#10;Press Enter twice to start a new paragraph with clean spacing on the live website."
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setHowToSteps((prev) =>
+                            prev.map((item, i) =>
+                              i === idx ? { ...item, text: val } : item
+                            )
+                          );
+                        }}
+                        className="w-full rounded-xl border border-obsidian/[0.1] dark:border-white/[0.1] bg-ivory dark:bg-carbon-card p-3 text-[13.5px] text-obsidian dark:text-pearl font-sans leading-relaxed resize-y focus:outline-none focus:ring-1 focus:ring-navy whitespace-pre-wrap"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                      <div>
+                        <label className="text-[11.5px] font-mono uppercase text-charcoal dark:text-cool-slate block mb-1">
+                          Terminal Command / Code (Optional)
+                        </label>
+                        <input
+                          type="text"
+                          value={st.commandOrCode || ""}
+                          placeholder="e.g. npm run build or git status"
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setHowToSteps((prev) =>
+                              prev.map((item, i) =>
+                                i === idx ? { ...item, commandOrCode: val } : item
+                              )
+                            );
+                          }}
+                          className="w-full rounded-lg border border-obsidian/[0.1] dark:border-white/[0.1] bg-ivory dark:bg-carbon-card px-3 py-2 text-[12.5px] font-mono text-obsidian dark:text-pearl focus:outline-none"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-[11.5px] font-mono uppercase text-charcoal dark:text-cool-slate block mb-1">
+                          Pro Tip / Warning (Optional)
+                        </label>
+                        <input
+                          type="text"
+                          value={st.proTip || ""}
+                          placeholder="e.g. Always backup your config file first"
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setHowToSteps((prev) =>
+                              prev.map((item, i) =>
+                                i === idx ? { ...item, proTip: val } : item
+                              )
+                            );
+                          }}
+                          className="w-full rounded-lg border border-obsidian/[0.1] dark:border-white/[0.1] bg-ivory dark:bg-carbon-card px-3 py-2 text-[12.5px] text-obsidian dark:text-pearl focus:outline-none"
+                        />
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
