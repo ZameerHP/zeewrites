@@ -13,17 +13,26 @@ import Lenis from "lenis";
 import { Article, SiteSettings } from "@/types";
 import { DEFAULT_SITE_SETTINGS } from "@/data/categories";
 
+export type SyncStatus = "synced" | "syncing" | "error";
+
 interface SiteContextValue {
   theme: "light" | "dark";
   toggleTheme: () => void;
   articles: Article[];
   settings: SiteSettings;
   storageMode: "supabase" | "local-file";
+  syncStatus: SyncStatus;
+  syncError: string | null;
   isAdminAuthenticated: boolean;
   refreshCmsData: () => Promise<void>;
   upsertArticle: (article: Article) => Promise<{ ok: boolean; error?: string }>;
-  deleteArticle: (id: string) => Promise<{ ok: boolean; error?: string }>;
-  updateSettings: (next: Partial<SiteSettings>) => Promise<{ ok: boolean; error?: string }>;
+  deleteArticle: (
+    id: string,
+    options?: { simulateFailure?: boolean }
+  ) => Promise<{ ok: boolean; error?: string }>;
+  updateSettings: (
+    next: Partial<SiteSettings>
+  ) => Promise<{ ok: boolean; error?: string }>;
   isCommandOpen: boolean;
   setCommandOpen: (open: boolean) => void;
   isModalLocked: boolean;
@@ -33,86 +42,17 @@ interface SiteContextValue {
   showToast: (msg: string) => void;
 }
 
-const LOCAL_USER_ARTICLES_KEY = "zeewrites_user_articles_v2";
-const LOCAL_DELETED_IDS_KEY = "zeewrites_deleted_ids_v2";
+const BROADCAST_CHANNEL_NAME = "zeewrites_cms_sync";
 
-const SEED_SAMPLE_IDS = new Set([
-  "art-01",
-  "art-02",
-  "art-03",
-  "art-04",
-  "art-05",
-  "art-06",
-  "art-07",
-  "art-08",
-  "art-09",
-  "art-10",
-  "fix-corrupted-utf8-text-mojibake-zero-width-characters",
-  "fix-err-ssl-protocol-error-dns-resolution-failures",
-  "clean-normalize-format-messy-pdf-copy-pasted-text",
-  "why-copy-pasted-code-breaks-smart-quotes-nbsp-sanitization",
-  "core-web-vitals-optimization-eliminate-cls-sub-second-lcp",
-  "mastering-regular-expressions-regex-text-search-cleanup",
-  "fix-high-ram-cpu-usage-modern-browsers-memory-leaks",
-  "markdown-formatting-masterclass-technical-documentation",
-  "resolve-git-line-ending-conflicts-crlf-lf-bom-errors",
-  "json-schema-validation-payload-minification-api-fixes",
-]);
-
-function getLocalUserArticles(): Article[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = localStorage.getItem(LOCAL_USER_ARTICLES_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveLocalUserArticle(art: Article): void {
-  if (typeof window === "undefined") return;
-  try {
-    const current = getLocalUserArticles();
-    const idx = current.findIndex((a) => a.id === art.id || a.slug === art.slug);
-    if (idx >= 0) {
-      current[idx] = art;
-    } else {
-      current.unshift(art);
-    }
-    localStorage.setItem(LOCAL_USER_ARTICLES_KEY, JSON.stringify(current));
-
-    const deleted = getLocalDeletedIds().filter((id) => id !== art.id && id !== art.slug);
-    localStorage.setItem(LOCAL_DELETED_IDS_KEY, JSON.stringify(deleted));
-  } catch {
-    // ignore
-  }
-}
-
-function getLocalDeletedIds(): string[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = localStorage.getItem(LOCAL_DELETED_IDS_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
-}
-
-function removeLocalUserArticle(id: string): void {
-  if (typeof window === "undefined") return;
-  try {
-    const current = getLocalUserArticles().filter((a) => a.id !== id && a.slug !== id);
-    localStorage.setItem(LOCAL_USER_ARTICLES_KEY, JSON.stringify(current));
-
-    const deleted = getLocalDeletedIds();
-    if (!deleted.includes(id)) {
-      deleted.push(id);
-      localStorage.setItem(LOCAL_DELETED_IDS_KEY, JSON.stringify(deleted));
-    }
-  } catch {
-    // ignore
-  }
-}
+const LEGACY_LOCALSTORAGE_KEYS = [
+  "zeewrites_user_articles_v2",
+  "zeewrites_deleted_ids_v2",
+  "zeewrites_client_cache_v3",
+  "zeewrites_cms_backup_v2",
+  "zeewrites_local_db_v1",
+  "zeewrites_theme_v3",
+  "zeewrites_theme_v1",
+];
 
 const SiteContext = createContext<SiteContextValue | undefined>(undefined);
 
@@ -128,14 +68,20 @@ export function SiteProvider({
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [articles, setArticles] = useState<Article[]>(initialArticles);
   const [settings, setSettings] = useState<SiteSettings>(initialSettings);
-  const [storageMode, setStorageMode] = useState<"supabase" | "local-file">("local-file");
-  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(false);
+  const [storageMode, setStorageMode] = useState<"supabase" | "local-file">(
+    "supabase"
+  );
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>("synced");
+  const [syncError, setSyncError] = useState<string | null>(null);
+  const [isAdminAuthenticated, setIsAdminAuthenticated] =
+    useState<boolean>(false);
   const [isCommandOpen, setCommandOpen] = useState(false);
   const [isModalLocked, setModalLocked] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const lenisRef = useRef<Lenis | null>(null);
   const rafRef = useRef<number | null>(null);
+  const channelRef = useRef<BroadcastChannel | null>(null);
   const pathname = usePathname();
   const router = useRouter();
 
@@ -145,72 +91,35 @@ export function SiteProvider({
 
   useEffect(() => {
     if (!toastMessage) return;
-    const timer = setTimeout(() => setToastMessage(null), 3200);
+    const timer = setTimeout(() => setToastMessage(null), 3600);
     return () => clearTimeout(timer);
   }, [toastMessage]);
 
-  // Initial client mount: Restore any persisted user articles immediately
+  // Keep state synced when server components re-render with fresh initialArticles
+  useEffect(() => {
+    setArticles((prev) => {
+      // Only overwrite from initialArticles if not currently on the admin route
+      // (admin route fetches both published and draft articles via /api/cms)
+      if (pathname?.startsWith("/zee-studio-vault")) {
+        return prev;
+      }
+      return initialArticles;
+    });
+  }, [initialArticles, pathname]);
+
+  // Purge all legacy localStorage article caches on mount so deleted posts never resurrect
   useEffect(() => {
     try {
-      localStorage.removeItem("zeewrites_cms_backup_v2");
-      localStorage.removeItem("zeewrites_theme_v3");
-      localStorage.removeItem("zeewrites_theme_v1");
-      localStorage.removeItem("zeewrites_local_db_v1");
+      for (const key of LEGACY_LOCALSTORAGE_KEYS) {
+        localStorage.removeItem(key);
+      }
       sessionStorage.removeItem("zeewrites_admin_token");
     } catch {
       // ignore
     }
     setTheme("light");
     document.documentElement.classList.remove("dark");
-
-    const localUserArticles = getLocalUserArticles().filter(
-      (a) => !SEED_SAMPLE_IDS.has(a.id) && !SEED_SAMPLE_IDS.has(a.slug)
-    );
-    try {
-      localStorage.setItem(LOCAL_USER_ARTICLES_KEY, JSON.stringify(localUserArticles));
-    } catch {
-      // ignore
-    }
-    const deletedIds = getLocalDeletedIds();
-    if (localUserArticles.length > 0) {
-      setArticles((prev) => {
-        let updated = prev.filter(
-          (a) =>
-            !deletedIds.includes(a.id) &&
-            !deletedIds.includes(a.slug) &&
-            !SEED_SAMPLE_IDS.has(a.id) &&
-            !SEED_SAMPLE_IDS.has(a.slug)
-        );
-        for (const u of localUserArticles) {
-          if (deletedIds.includes(u.id) || deletedIds.includes(u.slug)) continue;
-          const idx = updated.findIndex((a) => a.id === u.id || a.slug === u.slug);
-          if (idx >= 0) {
-            const uTime = new Date(u.updatedAt || 0).getTime();
-            const prevTime = new Date(updated[idx].updatedAt || 0).getTime();
-            if (uTime >= prevTime) {
-              updated[idx] = u;
-            }
-          } else {
-            updated.unshift(u);
-          }
-        }
-        return updated;
-      });
-    }
   }, []);
-
-  // Sync client-side versioned cache
-  useEffect(() => {
-    try {
-      if (articles.length > 0) {
-        localStorage.setItem("zeewrites_client_cache_v3", JSON.stringify(articles));
-      } else {
-        localStorage.removeItem("zeewrites_client_cache_v3");
-      }
-    } catch {
-      // ignore
-    }
-  }, [articles]);
 
   const toggleTheme = useCallback(() => {
     setTheme((prev) => {
@@ -285,7 +194,7 @@ export function SiteProvider({
     }
   }, []);
 
-  // Global keyboard shortcuts:
+  // Global keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
@@ -301,7 +210,7 @@ export function SiteProvider({
         e.key.toLowerCase() === "z"
       ) {
         e.preventDefault();
-        showToast("Stealth Editorial Studio unlocked — Redirecting...");
+        showToast("Opening Stealth Editorial Studio...");
         router.push("/zee-studio-vault");
       }
     };
@@ -310,11 +219,18 @@ export function SiteProvider({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [router, showToast]);
 
-  const getAuthHeaders = (): Record<string, string> => {
-    return { "Content-Type": "application/json" };
-  };
+  const notifyOtherTabs = useCallback(() => {
+    try {
+      channelRef.current?.postMessage({
+        type: "cms_updated",
+        timestamp: Date.now(),
+      });
+    } catch {
+      // ignore if BroadcastChannel is unsupported
+    }
+  }, []);
 
-  // Sync CMS Data with Server API (SINGLE SOURCE OF TRUTH + Auto-Recovery)
+  // Fetch CMS Data directly from Server API (Single Source of Truth — no union merging)
   const refreshCmsData = useCallback(async () => {
     try {
       const res = await fetch("/api/cms", {
@@ -322,69 +238,27 @@ export function SiteProvider({
         headers: { "Cache-Control": "no-cache" },
         credentials: "include",
       });
-      if (res.ok) {
-        const data = await res.json();
-        const serverArticles: Article[] = Array.isArray(data.articles) ? data.articles : [];
-        const localUserArticles = getLocalUserArticles().filter(
-          (a) => !SEED_SAMPLE_IDS.has(a.id) && !SEED_SAMPLE_IDS.has(a.slug)
-        );
-        const deletedIds = getLocalDeletedIds();
-
-        // 1. Filter out intentionally deleted articles
-        let merged = serverArticles.filter(
-          (a) =>
-            !deletedIds.includes(a.id) &&
-            !deletedIds.includes(a.slug) &&
-            !SEED_SAMPLE_IDS.has(a.id) &&
-            !SEED_SAMPLE_IDS.has(a.slug)
-        );
-
-        // 2. Auto-heal & Sync: Compare timestamps between local storage and server
-        const toSyncToServer: Article[] = [];
-        for (const userArt of localUserArticles) {
-          if (deletedIds.includes(userArt.id) || deletedIds.includes(userArt.slug)) continue;
-          const serverIdx = merged.findIndex((a) => a.id === userArt.id || a.slug === userArt.slug);
-          if (serverIdx >= 0) {
-            const serverArt = merged[serverIdx];
-            const userTime = new Date(userArt.updatedAt || 0).getTime();
-            const serverTime = new Date(serverArt.updatedAt || 0).getTime();
-            if (userTime > serverTime) {
-              merged[serverIdx] = userArt;
-              toSyncToServer.push(userArt);
-            }
-          } else {
-            merged.unshift(userArt);
-            toSyncToServer.push(userArt);
-          }
-        }
-
-        if (toSyncToServer.length > 0) {
-          for (const art of toSyncToServer) {
-            fetch("/api/cms", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              credentials: "include",
-              body: JSON.stringify({ action: "upsert_article", article: art }),
-            }).catch(() => {});
-          }
-        }
-
-        setArticles(merged);
-        if (data.storageMode) setStorageMode(data.storageMode);
-        if (data.settings) setSettings(data.settings);
-        setIsAdminAuthenticated(Boolean(data.authenticated));
+      if (!res.ok) {
+        setSyncStatus("error");
+        setSyncError(`Server returned ${res.status}`);
+        return;
       }
+      const data = await res.json();
+      const serverArticles: Article[] = Array.isArray(data.articles)
+        ? data.articles
+        : [];
+
+      // Replace local state strictly with the database response (never union merge)
+      setArticles(serverArticles);
+      if (data.storageMode) setStorageMode(data.storageMode);
+      if (data.settings) setSettings(data.settings);
+      setIsAdminAuthenticated(Boolean(data.authenticated));
+      setSyncStatus("synced");
+      setSyncError(null);
     } catch (err) {
       console.warn("Could not fetch /api/cms:", err);
-      const localUserArticles = getLocalUserArticles();
-      const deletedIds = getLocalDeletedIds();
-      if (localUserArticles.length > 0) {
-        setArticles((prev) => {
-          const filtered = prev.filter((a) => !deletedIds.includes(a.id));
-          const missing = localUserArticles.filter((u) => !filtered.some((f) => f.id === u.id));
-          return missing.length > 0 ? [...missing, ...filtered] : filtered;
-        });
-      }
+      setSyncStatus("error");
+      setSyncError(err instanceof Error ? err.message : "Network error");
     }
   }, []);
 
@@ -392,33 +266,57 @@ export function SiteProvider({
     refreshCmsData();
   }, [refreshCmsData]);
 
-  // Keep articles in sync when navigating to/from admin
+  // Cross-tab synchronization via BroadcastChannel + window focus refresh
   useEffect(() => {
-    if (pathname?.startsWith("/zee-studio-vault")) {
-      refreshCmsData();
+    if (typeof window === "undefined") return;
+
+    let bc: BroadcastChannel | null = null;
+    if ("BroadcastChannel" in window) {
+      try {
+        bc = new BroadcastChannel(BROADCAST_CHANNEL_NAME);
+        channelRef.current = bc;
+        bc.onmessage = (event) => {
+          if (event.data?.type === "cms_updated") {
+            refreshCmsData();
+            router.refresh();
+          }
+        };
+      } catch {
+        // ignore
+      }
     }
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        refreshCmsData();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      if (bc) {
+        bc.close();
+        channelRef.current = null;
+      }
+    };
+  }, [refreshCmsData, router]);
+
+  // Keep articles in sync when navigating across routes
+  useEffect(() => {
+    refreshCmsData();
   }, [pathname, refreshCmsData]);
 
-  // Upsert Article: Saves locally immediately, then persists to server
+  // Upsert Article: Verified server-first write (no fake success)
   const upsertArticle = useCallback(
     async (article: Article): Promise<{ ok: boolean; error?: string }> => {
-      // 1. Immediately persist locally (zero data loss guarantee)
-      saveLocalUserArticle(article);
-      setArticles((prev) => {
-        const idx = prev.findIndex((a) => a.id === article.id || a.slug === article.slug);
-        if (idx >= 0) {
-          const next = [...prev];
-          next[idx] = article;
-          return next;
-        }
-        return [article, ...prev];
-      });
+      setSyncStatus("syncing");
+      setSyncError(null);
 
-      // 2. Persist to server
       try {
         const res = await fetch("/api/cms", {
           method: "POST",
-          headers: getAuthHeaders(),
+          headers: { "Content-Type": "application/json" },
           credentials: "include",
           body: JSON.stringify({ action: "upsert_article", article }),
         });
@@ -426,122 +324,127 @@ export function SiteProvider({
         const data = await res.json();
         if (!res.ok || !data.ok) {
           const err = data.error || `Server returned ${res.status}`;
+          setSyncStatus("error");
+          setSyncError(err);
           return { ok: false, error: err };
         }
 
         if (Array.isArray(data.db?.articles)) {
-          const localUserArticles = getLocalUserArticles();
-          const deletedIds = getLocalDeletedIds();
-          let merged = [...data.db.articles];
-          for (const u of localUserArticles) {
-            if (deletedIds.includes(u.id) || deletedIds.includes(u.slug)) continue;
-            const idx = merged.findIndex((a) => a.id === u.id || a.slug === u.slug);
-            if (idx >= 0) {
-              const uTime = new Date(u.updatedAt || 0).getTime();
-              const mTime = new Date(merged[idx].updatedAt || 0).getTime();
-              if (uTime >= mTime) merged[idx] = u;
-            } else {
-              merged.unshift(u);
-            }
-          }
-          const clean = merged.filter(
-            (a: Article) =>
-              !deletedIds.includes(a.id) &&
-              !deletedIds.includes(a.slug) &&
-              !SEED_SAMPLE_IDS.has(a.id) &&
-              !SEED_SAMPLE_IDS.has(a.slug)
-          );
-          setArticles(clean);
+          setArticles(data.db.articles);
+        } else {
+          await refreshCmsData();
         }
+
+        setSyncStatus("synced");
+        setSyncError(null);
+        notifyOtherTabs();
         router.refresh();
         return { ok: true };
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Network error";
-        return { ok: true, error: `Saved locally (offline: ${msg})` };
+        setSyncStatus("error");
+        setSyncError(msg);
+        return { ok: false, error: msg };
       }
     },
-    [router]
+    [notifyOtherTabs, refreshCmsData, router]
   );
 
-  // Delete Article: Waits for verified server deletion; records in deletedIds
+  // Delete Article: Waits for verified server deletion before removing or reporting success
   const deleteArticle = useCallback(
-    async (id: string): Promise<{ ok: boolean; error?: string }> => {
-      // 1. Immediately remove locally and mark as deleted
-      removeLocalUserArticle(id);
-      setArticles((prev) => prev.filter((a) => a.id !== id && a.slug !== id));
+    async (
+      id: string,
+      options?: { simulateFailure?: boolean }
+    ): Promise<{ ok: boolean; error?: string }> => {
+      setSyncStatus("syncing");
+      setSyncError(null);
 
       try {
         const res = await fetch("/api/cms", {
           method: "POST",
-          headers: getAuthHeaders(),
+          headers: { "Content-Type": "application/json" },
           credentials: "include",
-          body: JSON.stringify({ action: "delete_article", id }),
+          body: JSON.stringify({
+            action: "delete_article",
+            id,
+            simulateFailure: options?.simulateFailure,
+          }),
         });
 
         const data = await res.json();
         if (!res.ok || !data.ok) {
           const err = data.error || `Server returned ${res.status}`;
+          setSyncStatus("error");
+          setSyncError(err);
+          // Ensure list reflects true server state (keep the post in the list!)
+          if (Array.isArray(data.db?.articles)) {
+            setArticles(data.db.articles);
+          }
           return { ok: false, error: err };
         }
 
         if (Array.isArray(data.db?.articles)) {
-          const localUserArticles = getLocalUserArticles();
-          const deletedIds = getLocalDeletedIds();
-          let merged = [...data.db.articles];
-          for (const u of localUserArticles) {
-            if (deletedIds.includes(u.id) || deletedIds.includes(u.slug)) continue;
-            const idx = merged.findIndex((a) => a.id === u.id || a.slug === u.slug);
-            if (idx >= 0) {
-              const uTime = new Date(u.updatedAt || 0).getTime();
-              const mTime = new Date(merged[idx].updatedAt || 0).getTime();
-              if (uTime >= mTime) merged[idx] = u;
-            } else {
-              merged.unshift(u);
-            }
-          }
-          const clean = merged.filter(
-            (a: Article) =>
-              !deletedIds.includes(a.id) &&
-              !deletedIds.includes(a.slug) &&
-              !SEED_SAMPLE_IDS.has(a.id) &&
-              !SEED_SAMPLE_IDS.has(a.slug)
-          );
-          setArticles(clean);
+          setArticles(data.db.articles);
+        } else {
+          setArticles((prev) => prev.filter((a) => a.id !== id && a.slug !== id));
         }
+
+        setSyncStatus("synced");
+        setSyncError(null);
+        notifyOtherTabs();
         router.refresh();
         return { ok: true };
       } catch (err) {
-        return { ok: true };
+        const msg = err instanceof Error ? err.message : "Network error";
+        setSyncStatus("error");
+        setSyncError(msg);
+        return { ok: false, error: msg };
       }
     },
-    [router]
+    [notifyOtherTabs, router]
   );
 
   const updateSettings = useCallback(
-    async (nextPartial: Partial<SiteSettings>): Promise<{ ok: boolean; error?: string }> => {
+    async (
+      nextPartial: Partial<SiteSettings>
+    ): Promise<{ ok: boolean; error?: string }> => {
+      setSyncStatus("syncing");
+      setSyncError(null);
       try {
         const res = await fetch("/api/cms", {
           method: "POST",
-          headers: getAuthHeaders(),
+          headers: { "Content-Type": "application/json" },
           credentials: "include",
-          body: JSON.stringify({ action: "update_settings", settings: nextPartial }),
+          body: JSON.stringify({
+            action: "update_settings",
+            settings: nextPartial,
+          }),
         });
 
         const data = await res.json();
         if (!res.ok || !data.ok) {
-          return { ok: false, error: data.error || "Failed to update settings" };
+          const err = data.error || "Failed to update settings";
+          setSyncStatus("error");
+          setSyncError(err);
+          return { ok: false, error: err };
         }
 
         if (data.db?.settings) {
           setSettings(data.db.settings);
         }
+        setSyncStatus("synced");
+        setSyncError(null);
+        notifyOtherTabs();
         router.refresh();
         return { ok: true };
       } catch (err) {
-        return { ok: false, error: err instanceof Error ? err.message : "Network error" };
+        const msg = err instanceof Error ? err.message : "Network error";
+        setSyncStatus("error");
+        setSyncError(msg);
+        return { ok: false, error: msg };
       }
     },
-    [router]
+    [notifyOtherTabs, router]
   );
 
   return (
@@ -552,6 +455,8 @@ export function SiteProvider({
         articles,
         settings,
         storageMode,
+        syncStatus,
+        syncError,
         isAdminAuthenticated,
         refreshCmsData,
         upsertArticle,

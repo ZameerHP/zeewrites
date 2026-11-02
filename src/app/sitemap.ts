@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const { articles, settings, deletedIds = [] } = await getDatabase();
+  const { articles, settings } = await getDatabase();
   let baseUrl = (settings.siteUrl || "https://zeewrites.blog").replace(/\/$/, "");
 
   try {
@@ -74,12 +74,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }));
 
   const articlePages: MetadataRoute.Sitemap = articles
-    .filter(
-      (a) =>
-        a.status === "published" &&
-        !deletedIds.includes(a.id) &&
-        !deletedIds.includes(a.slug)
-    )
+    .filter((a) => a.status === "published")
     .map((article) => ({
       url: `${baseUrl}/article/${article.slug}`,
       lastModified: new Date(article.updatedAt || article.publishedAt),

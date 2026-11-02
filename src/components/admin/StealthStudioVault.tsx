@@ -38,7 +38,11 @@ import { TechnicalDiagram } from "@/components/ui/TechnicalDiagram";
 import { SimpleAdminPanel } from "@/components/admin/SimpleAdminPanel";
 import { DeleteConfirmModal } from "@/components/ui/DeleteConfirmModal";
 
-export function StealthStudioVault() {
+export function StealthStudioVault({
+  initialAuthenticated = false,
+}: {
+  initialAuthenticated?: boolean;
+}) {
   const {
     articles,
     settings,
@@ -49,14 +53,11 @@ export function StealthStudioVault() {
     refreshCmsData,
   } = useSite();
 
-  // Authentication & Rate-Limiting State
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  // Authentication State (persisted via signed httpOnly cookie)
+  const [isAuthenticated, setIsAuthenticated] = useState(initialAuthenticated);
   const [passphraseInput, setPassphraseInput] = useState("");
   const [pinInput, setPinInput] = useState("");
-  const [failedAttempts, setFailedAttempts] = useState(0);
-  const [lockoutUntil, setLockoutUntil] = useState<number | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
-  const [showOwnerHint, setShowOwnerHint] = useState(false);
 
   // Active Studio Tab
   const [panelMode, setPanelMode] = useState<"simple" | "advanced">("simple");
@@ -620,8 +621,8 @@ export function StealthStudioVault() {
         .filter((a) => a.slug !== slug)
         .slice(0, 3)
         .map((a) => a.slug),
-      helpfulYes: 128,
-      helpfulNo: 2,
+      helpfulYes: 0,
+      helpfulNo: 0,
     };
 
     const res = await upsertArticle(articleObj);
@@ -1843,6 +1844,7 @@ export function StealthStudioVault() {
                       const res = await fetch("/api/cms", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
+                        credentials: "include",
                         body: JSON.stringify({ action: "import_backup", backup: parsed }),
                       });
                       if (res.ok) {
@@ -1880,7 +1882,7 @@ export function StealthStudioVault() {
             showToast(`Delete failed: ${res.error || "Database error"}`);
             return;
           }
-          showToast(`Deleted "${target.title.slice(0, 28)}..."`);
+          showToast("Post deleted.");
         }}
         onCancel={() => setDeleteTarget(null)}
       />

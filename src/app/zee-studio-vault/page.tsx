@@ -1,6 +1,10 @@
 import React from "react";
 import { Metadata } from "next";
 import { StealthStudioVault } from "@/components/admin/StealthStudioVault";
+import { isAuthenticatedAdmin } from "@/lib/server-auth";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export const metadata: Metadata = {
   title: "Stealth Editorial Studio | Zee Writes",
@@ -17,6 +21,7 @@ export const metadata: Metadata = {
   },
 };
 
-export default function ZeeStudioVaultPage() {
-  return <StealthStudioVault />;
+export default async function ZeeStudioVaultPage() {
+  const initialAuth = await isAuthenticatedAdmin();
+  return <StealthStudioVault initialAuthenticated={initialAuth} />;
 }

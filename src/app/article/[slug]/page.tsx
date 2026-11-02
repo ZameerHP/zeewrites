@@ -1,10 +1,10 @@
 import React from "react";
 import { Metadata } from "next";
+import { notFound } from "next/navigation";
 import { getDatabase, getArticleBySlug } from "@/lib/server-store";
+import { isAuthenticatedAdmin } from "@/lib/server-auth";
 import { generateArticleJsonLd } from "@/lib/schema";
 import { ArticleReaderView } from "@/components/article/ArticleReaderView";
-import { ArticleClientResolver } from "@/components/article/ArticleClientResolver";
-import { Article } from "@/types";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -21,14 +21,16 @@ export async function generateMetadata({
     const { slug } = await params;
     const { settings } = await getDatabase();
     const article = await getArticleBySlug(slug);
+    const isAdmin = await isAuthenticatedAdmin();
 
-    if (!article) {
-      const cleanTitle = decodeURIComponent(slug)
-        .replace(/[-_]+/g, " ")
-        .replace(/\b\w/g, (c) => c.toUpperCase());
+    if (!article || (article.status !== "published" && !isAdmin)) {
       return {
-        title: `${cleanTitle} | Zee Writes`,
-        description: `Read ${cleanTitle} on Zee Writes.`,
+        title: "Page Not Found | Zee Writes",
+        description: "The requested guide or page could not be found.",
+        robots: {
+          index: false,
+          follow: false,
+        },
       };
     }
 
@@ -61,7 +63,7 @@ export async function generateMetadata({
     };
   } catch {
     return {
-      title: "Zee Writes | Guides & Tech Fixes",
+      title: "Page Not Found | Zee Writes",
     };
   }
 }
@@ -70,9 +72,10 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
   const { slug } = await params;
   const { settings } = await getDatabase();
   const article = await getArticleBySlug(slug);
+  const isAdmin = await isAuthenticatedAdmin();
 
-  if (!article) {
-    return <ArticleClientResolver slug={slug} fallbackSettings={settings} />;
+  if (!article || (article.status !== "published" && !isAdmin)) {
+    notFound();
   }
 
   let jsonLd: any = null;

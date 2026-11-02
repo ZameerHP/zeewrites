@@ -1,5 +1,5 @@
 import React from "react";
-import { AlertTriangle, Trash2, X } from "lucide-react";
+import { Trash2, X } from "lucide-react";
 
 interface DeleteConfirmModalProps {
   isOpen: boolean;
@@ -34,6 +34,7 @@ export function DeleteConfirmModal({
             type="button"
             onClick={onCancel}
             disabled={isDeleting}
+            aria-label="Close dialog"
             className="w-8 h-8 rounded-full border border-hairline flex items-center justify-center text-muted hover:text-ink transition-colors"
           >
             <X className="w-4 h-4" />
@@ -45,10 +46,12 @@ export function DeleteConfirmModal({
             id="delete-dialog-title"
             className="font-sans font-semibold text-[19px] text-ink leading-snug"
           >
-            Delete this article?
+            Delete this article? This can&apos;t be undone.
           </h3>
           <p className="text-[14px] text-muted leading-relaxed">
-            This will permanently remove <strong className="text-ink font-medium">&ldquo;{title}&rdquo;</strong> from your site and database. This cannot be undone.
+            This will permanently remove{" "}
+            <strong className="text-ink font-medium">&ldquo;{title}&rdquo;</strong>{" "}
+            from your site and database.
           </p>
         </div>
 
@@ -73,7 +76,7 @@ export function DeleteConfirmModal({
                 <span>Deleting...</span>
               </>
             ) : (
-              <span>Delete Article</span>
+              <span>Delete</span>
             )}
           </button>
         </div>

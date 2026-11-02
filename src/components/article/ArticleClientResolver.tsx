@@ -1,186 +1,46 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React from "react";
 import Link from "next/link";
-import { ArrowRight, Loader2 } from "lucide-react";
-import { Article, SiteSettings } from "@/types";
-import { useSite } from "@/components/providers/SiteProvider";
-import { ArticleReaderView } from "@/components/article/ArticleReaderView";
-import { ZeeMark } from "@/components/ui/ZeeLogo";
+import { ArrowRight } from "lucide-react";
 
-interface ArticleClientResolverProps {
-  slug: string;
-  fallbackSettings?: SiteSettings;
-}
-
-function cleanSlug(s: string): string {
-  try {
-    return decodeURIComponent(s)
-      .toLowerCase()
-      .trim()
-      .replace(/['"]/g, "")
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "");
-  } catch {
-    return s.toLowerCase().trim();
-  }
-}
-
-export function ArticleClientResolver({
-  slug,
-  fallbackSettings,
-}: ArticleClientResolverProps) {
-  const { articles } = useSite();
-  const [localFound, setLocalFound] = useState<Article | null>(null);
-  const [fetchedArticle, setFetchedArticle] = useState<Article | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  const targetSlug = cleanSlug(slug);
-  const rawTarget = decodeURIComponent(slug).toLowerCase().trim();
-
-  const isMatchingArticle = (a: Article | null | undefined): boolean => {
-    if (!a || !a.slug) return false;
-    const s = cleanSlug(a.slug);
-    const rawS = (a.slug || "").toLowerCase().trim();
-    return (
-      s === targetSlug ||
-      rawS === rawTarget ||
-      a.slug === slug ||
-      a.id === slug ||
-      a.slug.replace(/-/g, "") === slug.replace(/-/g, "") ||
-      (targetSlug.length >= 25 && s.length >= 25 && (targetSlug.startsWith(s) || s.startsWith(targetSlug)))
-    );
-  };
-
-  // 1. Check local client SiteProvider articles
-  const matchedInStore = useMemo(() => {
-    return articles.find(isMatchingArticle) || null;
-  }, [articles, targetSlug, rawTarget, slug]);
-
-  // 2. Immediate direct localStorage check (hydrates on mount without waiting for Context)
-  useEffect(() => {
-    if (matchedInStore) return;
-    try {
-      const keys = ["zeewrites_user_articles_v2", "zeewrites_client_cache_v3"];
-      for (const k of keys) {
-        const raw = localStorage.getItem(k);
-        if (raw) {
-          const list: Article[] = JSON.parse(raw);
-          const found = list.find(isMatchingArticle);
-          if (found) {
-            setLocalFound(found);
-            setIsLoading(false);
-            // Auto-heal: sync to server so all devices can see it
-            fetch("/api/cms", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              credentials: "include",
-              body: JSON.stringify({ action: "upsert_article", article: found }),
-            }).catch(() => {});
-            return;
-          }
-        }
-      }
-    } catch {
-      // ignore
-    }
-  }, [matchedInStore, targetSlug, rawTarget, slug]);
-
-  // 3. Fetch fresh from API if not yet found in store
-  useEffect(() => {
-    if (matchedInStore || localFound) {
-      setIsLoading(false);
-      return;
-    }
-
-    let isMounted = true;
-    async function fetchFromApi() {
-      try {
-        const res = await fetch("/api/cms?t=" + Date.now(), {
-          cache: "no-store",
-          headers: { "Cache-Control": "no-cache" },
-          credentials: "include",
-        });
-        if (res.ok) {
-          const data = await res.json();
-          if (Array.isArray(data.articles)) {
-            const found = data.articles.find(isMatchingArticle);
-            if (found && isMounted) {
-              setFetchedArticle(found);
-            }
-          }
-        }
-      } catch (err) {
-        console.warn("Could not fetch article dynamically:", err);
-      } finally {
-        if (isMounted) setIsLoading(false);
-      }
-    }
-
-    fetchFromApi();
-    return () => {
-      isMounted = false;
-    };
-  }, [matchedInStore, localFound, targetSlug, rawTarget, slug]);
-
-  const activeArticle = matchedInStore || localFound || fetchedArticle;
-
-  if (activeArticle) {
-    return <ArticleReaderView initialArticle={activeArticle} slug={activeArticle.slug} />;
-  }
-
-  if (isLoading) {
-    return (
-      <div className="min-h-[50vh] flex flex-col items-center justify-center gap-3">
-        <Loader2 className="w-8 h-8 text-navy animate-spin" />
-        <p className="text-[14px] text-muted font-mono">Loading article...</p>
-      </div>
-    );
-  }
-
-  // Not found fallback UI
+/**
+ * Fallback 404 view (no localStorage resurrection or background re-insertion).
+ */
+export function ArticleClientResolver() {
   return (
-    <section className="px-[14px] pb-12">
-      <div className="relative rounded-[32px] border border-hairline stage-panel-gradient overflow-hidden min-h-[480px] flex flex-col items-center justify-center py-16 px-4 sm:px-6 text-center">
+    <div className="min-h-[65vh] flex items-center justify-center px-4 py-12">
+      <div className="max-w-[540px] w-full rounded-[32px] border border-hairline stage-panel-gradient p-8 sm:p-12 text-center space-y-6 relative overflow-hidden">
         <div
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 stage-dot-pattern"
         />
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-x-0 bottom-0 h-[18%] stage-bottom-fade"
-        />
-
-        <div className="relative z-10 max-w-[540px] mx-auto flex flex-col items-center">
-          <div className="w-[64px] h-[64px] rounded-[18px] bg-surface shadow-2 border border-hairline ring-1 ring-inset ring-white dark:ring-white/15 flex items-center justify-center mb-5">
-            <ZeeMark size={34} />
-          </div>
-
-          <div className="inline-flex items-center gap-2 h-[32px] px-[14px] mb-[20px] rounded-full bg-surface border border-hairline shadow-1 text-[13px] font-medium text-ink">
+        <div className="relative z-10 flex flex-col items-center space-y-5">
+          <div className="inline-flex items-center gap-2 h-[32px] px-[14px] rounded-full bg-surface border border-hairline shadow-1 text-[13px] font-medium text-ink">
             <span className="w-[6px] h-[6px] rounded-full bg-accent" />
-            <span>404 Page not found</span>
+            <span>404</span>
           </div>
 
-          <h1 className="font-sans font-medium text-[clamp(30px,5vw,48px)] leading-[1.08] tracking-[-0.025em] text-ink [text-wrap:balance]">
-            We Couldn&apos;t Find <span className="text-navy">That Page</span>
+          <h1 className="font-sans font-medium text-[clamp(28px,4.5vw,42px)] leading-[1.1] tracking-[-0.02em] text-ink [text-wrap:balance]">
+            We Couldn&apos;t Find That Page
           </h1>
 
-          <p className="mt-[20px] mb-[28px] text-[18px] text-secondary leading-[1.55] [text-wrap:balance]">
-            The guide or page you requested may have moved. Use the link below
-            to return to the frontpage.
+          <p className="text-[17px] text-secondary leading-[1.6] max-w-[420px] mx-auto">
+            The guide or page you requested has been removed or moved. Use the
+            link below to return to the frontpage.
           </p>
 
-          <div className="flex items-center justify-center">
+          <div className="pt-2">
             <Link
               href="/"
-              className="inline-flex items-center justify-center gap-2 px-7 min-h-[44px] text-[15px] font-medium btn-primary-pill"
+              className="inline-flex items-center justify-center gap-2 px-7 min-h-[48px] text-[15px] font-semibold btn-primary-pill"
             >
-              <span>Return Home</span>
-              <ArrowRight className="w-4 h-4" strokeWidth={1.5} />
+              <span>Return to Frontpage</span>
+              <ArrowRight className="w-4 h-4" strokeWidth={1.75} />
             </Link>
           </div>
         </div>
       </div>
-    </section>
+    </div>
   );
 }

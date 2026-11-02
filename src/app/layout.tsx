@@ -88,6 +88,7 @@ export default async function RootLayout({
       className={`${manrope.variable} ${jetbrains.variable}`}
     >
       <head>
+        <meta charSet="utf-8" />
         <script dangerouslySetInnerHTML={{ __html: LIGHT_MODE_INIT_SCRIPT }} />
         {settings.gscVerification && (
           <meta name="google-site-verification" content={settings.gscVerification} />

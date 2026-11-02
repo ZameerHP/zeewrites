@@ -18,13 +18,8 @@ export const metadata: Metadata = {
 };
 
 export default async function HtmlSitemapPage() {
-  const { articles, deletedIds = [] } = await getDatabase();
-  const published = articles.filter(
-    (a) =>
-      a.status === "published" &&
-      !deletedIds.includes(a.id) &&
-      !deletedIds.includes(a.slug)
-  );
+  const { articles } = await getDatabase();
+  const published = articles.filter((a) => a.status === "published");
 
   return (
     <div className="space-y-12 pb-8">
@@ -132,38 +127,44 @@ export default async function HtmlSitemapPage() {
             </h2>
           </div>
 
-          <ul className="divide-y divide-hairline">
-            {published.map((art) => {
-              const cat = CATEGORIES[art.category];
-              const mins = Math.max(1, Math.ceil(art.wordCount / 200));
-              return (
-                <li key={art.id}>
-                  <Link
-                    href={`/article/${art.slug}`}
-                    className="group py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-page px-2 rounded-[12px] transition-colors duration-micro"
-                  >
-                    <div className="space-y-1 min-w-0">
-                      <div className="flex items-center gap-2 text-[13px]">
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-badge-bg text-badge-text font-medium text-[12px]">
-                          <span className="w-1.5 h-1.5 rounded-full bg-badge-dot" />
-                          <span>{cat?.shortName || "Guide"}</span>
-                        </span>
-                        <span className="text-muted">{mins} min read</span>
+          {published.length === 0 ? (
+            <p className="py-6 text-[15px] text-muted">
+              No guides published yet.
+            </p>
+          ) : (
+            <ul className="divide-y divide-hairline">
+              {published.map((art) => {
+                const cat = CATEGORIES[art.category];
+                const mins = Math.max(1, Math.ceil(art.wordCount / 200));
+                return (
+                  <li key={art.id}>
+                    <Link
+                      href={`/article/${art.slug}`}
+                      className="group py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-page px-2 rounded-[12px] transition-colors duration-micro"
+                    >
+                      <div className="space-y-1 min-w-0">
+                        <div className="flex items-center gap-2 text-[13px]">
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-badge-bg text-badge-text font-medium text-[12px]">
+                            <span className="w-1.5 h-1.5 rounded-full bg-badge-dot" />
+                            <span>{cat?.shortName || "Guide"}</span>
+                          </span>
+                          <span className="text-muted">{mins} min read</span>
+                        </div>
+                        <div className="font-sans font-semibold text-[16px] text-ink group-hover:text-navy leading-snug">
+                          {art.title}
+                        </div>
                       </div>
-                      <div className="font-sans font-semibold text-[16px] text-ink group-hover:text-navy leading-snug">
-                        {art.title}
-                      </div>
-                    </div>
 
-                    <ArrowRight
-                      className="w-4 h-4 text-muted group-hover:text-navy group-hover:translate-x-0.5 transition-all duration-hover ease-out-expo shrink-0"
-                      strokeWidth={1.5}
-                    />
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
+                      <ArrowRight
+                        className="w-4 h-4 text-muted group-hover:text-navy group-hover:translate-x-0.5 transition-all duration-hover ease-out-expo shrink-0"
+                        strokeWidth={1.5}
+                      />
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
         </section>
       </div>
     </div>

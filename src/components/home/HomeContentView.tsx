@@ -173,7 +173,7 @@ export function HomeContentView({ initialArticles }: HomeContentViewProps) {
       {
         id: "how-to-fixes",
         label: "How-To Fixes",
-        subLabel: formatGuideCount(categoryCounts["how-to-fixes"] ?? 3),
+        subLabel: formatGuideCount(categoryCounts["how-to-fixes"] ?? 0),
         href: "/category/how-to-fixes",
         icon: Wrench,
         positionClass:
@@ -183,17 +183,17 @@ export function HomeContentView({ initialArticles }: HomeContentViewProps) {
       {
         id: "text-guides",
         label: "Text Guides",
-        subLabel: formatGuideCount(categoryCounts["text-guides"] ?? 4),
+        subLabel: formatGuideCount(categoryCounts["text-guides"] ?? 0),
         href: "/category/text-guides",
         icon: FileText,
         positionClass:
-          "left-[0px] lg:left-[12px] xl:left-[24px] top-[72px]",
+          "left-[0px] lg:left-[12px] xl:right-auto xl:left-[24px] top-[72px]",
         delayMs: 200,
       },
       {
         id: "solutions",
         label: "Solutions",
-        subLabel: formatGuideCount(categoryCounts["solutions"] ?? 3),
+        subLabel: formatGuideCount(categoryCounts["solutions"] ?? 0),
         href: "/category/solutions",
         icon: Braces,
         positionClass:
@@ -743,7 +743,7 @@ export function HomeContentView({ initialArticles }: HomeContentViewProps) {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {activeCategories.map((cat) => {
+          {(activeCategories.length > 0 ? activeCategories : CATEGORY_LIST.slice(0, 3)).map((cat) => {
             const count = publishedArticles.filter(
               (a) => a.category === cat.slug
             ).length;

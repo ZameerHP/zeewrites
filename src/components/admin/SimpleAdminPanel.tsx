@@ -209,7 +209,16 @@ interface SimpleAdminPanelProps {
 type View = "list" | "editor";
 
 export function SimpleAdminPanel({ onLock, onOpenAdvanced }: SimpleAdminPanelProps) {
-  const { articles, upsertArticle, deleteArticle, showToast, refreshCmsData, storageMode } = useSite();
+  const {
+    articles,
+    upsertArticle,
+    deleteArticle,
+    showToast,
+    refreshCmsData,
+    storageMode,
+    syncStatus,
+    syncError,
+  } = useSite();
 
   const [view, setView] = useState<View>("list");
   const [listFilter, setListFilter] = useState<"all" | CategorySlug>("all");
@@ -819,10 +828,25 @@ export function SimpleAdminPanel({ onLock, onOpenAdvanced }: SimpleAdminPanelPro
         <div>
           <div className="flex items-center gap-2">
             <h1 className="font-sans font-semibold text-[20px] text-ink">Admin Panel</h1>
-            <span className="text-[12px] font-medium px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/60 inline-flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              Synced &amp; Vercel Ready
-            </span>
+            {syncStatus === "error" ? (
+              <span
+                title={syncError || "Database sync error"}
+                className="text-[12px] font-medium px-2.5 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200/80 inline-flex items-center gap-1"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                Sync Error
+              </span>
+            ) : syncStatus === "syncing" ? (
+              <span className="text-[12px] font-medium px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200/80 inline-flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping" />
+                Syncing...
+              </span>
+            ) : (
+              <span className="text-[12px] font-medium px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/60 inline-flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                Synced &amp; Vercel Ready
+              </span>
+            )}
           </div>
           <p className="text-[13px] text-muted mt-0.5">
             {articles.length} posts · {articles.filter((a) => a.status === "draft").length} drafts ·{" "}
