@@ -18,10 +18,12 @@ import { TechnicalDiagram } from "@/components/ui/TechnicalDiagram";
 import { AdSlot } from "@/components/ui/AdSlot";
 import { ArticleCard } from "@/components/ui/ArticleCard";
 import { ZeeMark } from "@/components/ui/ZeeLogo";
+import { VALID_TLDS, normalizeWebsiteHref } from "@/lib/autolink";
 
 /**
  * Render text with inline markdown formatting:
  * - [link text](url) -> Next.js Link (internal) or <a> (external)
+ * - bare URLs / website names (e.g. "zeewrites.blog", "resend.com", "github.com") -> <a> (external)
  * - `code` -> inline code badge
  * - **bold** -> strong tag
  * - *italic* -> em tag
@@ -30,7 +32,17 @@ import { ZeeMark } from "@/components/ui/ZeeLogo";
 function renderFormattedText(text: string): React.ReactNode {
   if (!text) return null;
 
-  const pattern = /\[([^\]]+)\]\(([^)]+)\)|`([^`]+)`|\*\*([^*]+)\*\*|\*([^*]+)\*|==([^=]+)==|<mark>([^<]+)<\/mark>/g;
+  const pattern = new RegExp(
+    `\\[([^\\]]+)\\]\\(([^)]+)\\)|` +
+      "`([^`]+)`|" +
+      `\\*\\*([^*]+)\\*\\*|` +
+      `\\*([^*]+)\\*|` +
+      `==([^=]+)==|<mark>([^<]+)<\\/mark>|` +
+      `(https?:\\/\\/[^\\s<>()]+[^\\s<>()\\.,;:?!'\"\\]\\[]|` +
+      `\\bwww\\.[a-zA-Z0-9-]+(?:\\.[a-zA-Z0-9-]+)+(?:\\/[^\\s<>()\\.,;:?!'\"\\]\\[]*)?|` +
+      `(?<![@\\/\\w])(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\\.)+(?:${VALID_TLDS})\\b(?:\\/[^\\s<>()\\.,;:?!'\"\\]\\[]*)?)`,
+    "g"
+  );
   const nodes: React.ReactNode[] = [];
   let lastIndex = 0;
   let match: RegExpExecArray | null;
@@ -41,7 +53,17 @@ function renderFormattedText(text: string): React.ReactNode {
       nodes.push(text.slice(lastIndex, match.index));
     }
 
-    const [, linkText, linkUrl, codeText, boldText, italicText, highlight1, highlight2] = match;
+    const [
+      ,
+      linkText,
+      linkUrl,
+      codeText,
+      boldText,
+      italicText,
+      highlight1,
+      highlight2,
+      bareUrl,
+    ] = match;
     const highlightText = highlight1 || highlight2;
 
     if (linkText && linkUrl) {
@@ -72,6 +94,19 @@ function renderFormattedText(text: string): React.ReactNode {
           </a>
         );
       }
+    } else if (bareUrl) {
+      const safeUrl = normalizeWebsiteHref(bareUrl);
+      nodes.push(
+        <a
+          key={`u-${keyIndex++}`}
+          href={safeUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-navy font-semibold underline underline-offset-2 hover:text-[#3a63de] transition-colors inline-flex items-center gap-0.5"
+        >
+          <span>{bareUrl}</span>
+        </a>
+      );
     } else if (codeText) {
       nodes.push(
         <code

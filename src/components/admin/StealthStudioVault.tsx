@@ -21,7 +21,9 @@ import {
   RotateCcw,
   KeyRound,
   ArrowUpRight,
+  Link2,
 } from "lucide-react";
+import { autoLinkText } from "@/lib/autolink";
 import {
   Article,
   ArticleFAQ,
@@ -484,6 +486,64 @@ export function StealthStudioVault() {
     showToast(`Loaded "${art.title.slice(0, 36)}..." into Studio Editor.`);
   };
 
+  const handleAutoLinkAll = () => {
+    let total = 0;
+    const { text: newExcerpt, count: eCount } = autoLinkText(excerpt);
+    total += eCount;
+    if (eCount > 0) setExcerpt(newExcerpt);
+
+    const { text: newSymptom, count: symCount } = autoLinkText(symptom);
+    total += symCount;
+    if (symCount > 0) setSymptom(newSymptom);
+
+    const { text: newRootCause, count: rcCount } = autoLinkText(rootCause);
+    total += rcCount;
+    if (rcCount > 0) setRootCause(newRootCause);
+
+    const { text: newInstantFix, count: ifCount } = autoLinkText(instantFix);
+    total += ifCount;
+    if (ifCount > 0) setInstantFix(newInstantFix);
+
+    let stepCount = 0;
+    const newSteps = howToSteps.map((s) => {
+      const { text: sText, count: stCount } = autoLinkText(s.text);
+      stepCount += stCount;
+      const { text: pTip, count: tipCount } = s.proTip
+        ? autoLinkText(s.proTip)
+        : { text: undefined, count: 0 };
+      stepCount += tipCount;
+      return { ...s, text: sText, proTip: pTip };
+    });
+    total += stepCount;
+    if (stepCount > 0) setHowToSteps(newSteps);
+
+    let secCount = 0;
+    const newSecs = sections.map((sec) => {
+      const paras = (sec.paragraphs || []).map((p) => {
+        const { text: pText, count } = autoLinkText(p);
+        secCount += count;
+        return pText;
+      });
+      const items = sec.items?.map((it) => {
+        if (it.type === "paragraph") {
+          const { text: itText, count } = autoLinkText(it.text);
+          secCount += count;
+          return { ...it, text: itText };
+        }
+        return it;
+      });
+      return { ...sec, paragraphs: paras, items };
+    });
+    total += secCount;
+    if (secCount > 0) setSections(newSecs);
+
+    if (total > 0) {
+      showToast(`✓ Auto-linked ${total} website name(s) into clickable links!`);
+    } else {
+      showToast("All website names and URLs are already linked!");
+    }
+  };
+
   const handlePublishOrSave = async (targetStatus: "published" | "draft") => {
     if (coverAlt.trim().length < 10 || coverCaption.trim().length < 10) {
       showToast(
@@ -493,6 +553,24 @@ export function StealthStudioVault() {
     }
 
     const now = new Date().toISOString();
+    const linkedSteps = howToSteps.map((s) => ({
+      ...s,
+      text: autoLinkText(s.text).text,
+      proTip: s.proTip ? autoLinkText(s.proTip).text : undefined,
+    }));
+    const linkedSections = sections.map((sec) => ({
+      ...sec,
+      paragraphs: (sec.paragraphs || []).map((p) => autoLinkText(p).text),
+      items: sec.items?.map((it) =>
+        it.type === "paragraph"
+          ? { ...it, text: autoLinkText(it.text).text }
+          : it
+      ),
+      callout: sec.callout
+        ? { ...sec.callout, body: autoLinkText(sec.callout.body).text }
+        : undefined,
+    }));
+
     const articleObj: Article = {
       id: editingId === "art-new" ? `art-${Date.now()}` : editingId,
       slug:
@@ -503,7 +581,7 @@ export function StealthStudioVault() {
           .replace(/^-|-$/g, "") || `guide-${Date.now()}`,
       title: title.trim(),
       subtitle: subtitle.trim(),
-      excerpt: excerpt.trim(),
+      excerpt: autoLinkText(excerpt).text.trim(),
       category,
       publishedAt: now,
       updatedAt: now,
@@ -524,14 +602,14 @@ export function StealthStudioVault() {
         diagramType: coverDiagramType,
       },
       verifiedTakeaway: {
-        symptom: symptom.trim(),
-        rootCause: rootCause.trim(),
-        instantFix: instantFix.trim(),
+        symptom: autoLinkText(symptom).text.trim(),
+        rootCause: autoLinkText(rootCause).text.trim(),
+        instantFix: autoLinkText(instantFix).text.trim(),
         estimatedFixTime: estimatedFixTime.trim(),
         testedPlatforms: testedOn.split(",").map((s) => s.trim()),
       },
-      howToSteps,
-      sections,
+      howToSteps: linkedSteps,
+      sections: linkedSections,
       faqs,
       author: DEFAULT_AUTHOR,
       tags: tagsInput
@@ -1372,8 +1450,19 @@ export function StealthStudioVault() {
                   <span>Pin to Featured Bento Grid on Homepage</span>
                 </label>
 
+                {/* Auto-Link Websites Quick Action */}
+                <button
+                  type="button"
+                  onClick={handleAutoLinkAll}
+                  className="w-full py-2 px-3 rounded-xl border border-navy/25 dark:border-accent/35 bg-navy/5 dark:bg-navy/20 text-navy dark:text-accent text-[12.5px] font-mono font-semibold flex items-center justify-center gap-1.5 hover:bg-navy/10 transition-colors"
+                  title="Scan and convert all website names into clickable links"
+                >
+                  <Link2 className="w-3.5 h-3.5" />
+                  <span>Auto-Link Websites (1-Click)</span>
+                </button>
+
                 {/* Publish / Save Buttons */}
-                <div className="grid grid-cols-2 gap-2 pt-2">
+                <div className="grid grid-cols-2 gap-2 pt-1">
                   <button
                     type="button"
                     onClick={() => handlePublishOrSave("published")}

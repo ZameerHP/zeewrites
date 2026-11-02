@@ -17,7 +17,9 @@ import {
   Eye,
   Columns2,
   Check,
+  Link2,
 } from "lucide-react";
+import { autoLinkText, handleTypingAutoLink } from "@/lib/autolink";
 import {
   Article,
   ArticleFAQ,
@@ -256,6 +258,7 @@ export function SimpleAdminPanel({ onLock, onOpenAdvanced }: SimpleAdminPanelPro
 
   // Smart Paste, Live Preview, and Undo state
   const [autoFormatOnPaste, setAutoFormatOnPaste] = useState(true);
+  const [autoLinkWebsites, setAutoLinkWebsites] = useState(true);
   const [editorMode, setEditorMode] = useState<"edit" | "preview" | "split">("edit");
   const [lastUndoState, setLastUndoState] = useState<{
     content: string;
@@ -368,9 +371,59 @@ export function SimpleAdminPanel({ onLock, onOpenAdvanced }: SimpleAdminPanelPro
     });
   };
 
+  const handleAutoLinkAll = () => {
+    let totalCount = 0;
+    const { text: newContent, count: cCount } = autoLinkText(content);
+    totalCount += cCount;
+    if (cCount > 0) setContent(newContent);
+
+    const { text: newSummary, count: sCount } = autoLinkText(summary);
+    totalCount += sCount;
+    if (sCount > 0) setSummary(newSummary);
+
+    let stepCount = 0;
+    const newSteps = steps.map((s) => {
+      const { text: sText, count: stCount } = autoLinkText(s.text);
+      stepCount += stCount;
+      const { text: pTip, count: tipCount } = s.proTip
+        ? autoLinkText(s.proTip)
+        : { text: undefined, count: 0 };
+      stepCount += tipCount;
+      return { ...s, text: sText, proTip: pTip };
+    });
+    totalCount += stepCount;
+    if (stepCount > 0) setSteps(newSteps);
+
+    if (totalCount > 0) {
+      showToast(
+        `✓ Auto-linked ${totalCount} website name${
+          totalCount === 1 ? "" : "s"
+        } into clickable links!`
+      );
+    } else {
+      showToast("All website names and URLs are already linked!");
+    }
+  };
+
   const handleContentKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z" && lastUndoState) {
       handleUndo();
+      return;
+    }
+
+    if (autoLinkWebsites && (e.key === " " || e.key === "Enter")) {
+      const el = contentRef.current;
+      if (!el) return;
+      const cursorPos = el.selectionStart ?? content.length;
+      const delimiter = e.key === "Enter" ? "\n" : " ";
+      const res = handleTypingAutoLink(content, cursorPos, delimiter);
+      if (res) {
+        e.preventDefault();
+        setContent(res.newText);
+        requestAnimationFrame(() => {
+          el.setSelectionRange(res.newCursor, res.newCursor);
+        });
+      }
     }
   };
 
@@ -612,9 +665,11 @@ export function SimpleAdminPanel({ onLock, onOpenAdvanced }: SimpleAdminPanelPro
 
     setSaving(true);
     const now = new Date().toISOString();
-    const cleanSummary = summary.trim() || content.trim().replace(/[#>`*]/g, "").slice(0, 200);
+    const autoContent = autoLinkWebsites ? autoLinkText(content).text : content;
+    const autoSummary = autoLinkWebsites ? autoLinkText(summary).text : summary;
+    const cleanSummary = autoSummary.trim() || autoContent.trim().replace(/[#>`*]/g, "").slice(0, 200);
     const fallbackHeading = category === "tutorials" ? "Tutorial" : "Overview";
-    let sections = contentToSections(content, fallbackHeading);
+    let sections = contentToSections(autoContent, fallbackHeading);
 
     // Keep tables / inline images from the original article when headings still match.
     if (existingBase) {
@@ -631,13 +686,17 @@ export function SimpleAdminPanel({ onLock, onOpenAdvanced }: SimpleAdminPanelPro
 
     const cleanSteps = steps
       .filter((s) => s.name.trim() || s.text.trim())
-      .map((s, i) => ({
-        stepNumber: i + 1,
-        name: s.name.trim() || `Step ${i + 1}`,
-        text: s.text.trim(),
-        commandOrCode: s.commandOrCode?.trim() || undefined,
-        proTip: s.proTip?.trim() || undefined,
-      }));
+      .map((s, i) => {
+        const stepText = autoLinkWebsites ? autoLinkText(s.text).text : s.text;
+        const stepTip = s.proTip && autoLinkWebsites ? autoLinkText(s.proTip).text : s.proTip;
+        return {
+          stepNumber: i + 1,
+          name: s.name.trim() || `Step ${i + 1}`,
+          text: stepText.trim(),
+          commandOrCode: s.commandOrCode?.trim() || undefined,
+          proTip: stepTip?.trim() || undefined,
+        };
+      });
     const cleanFaqs = faqs.filter((f) => f.question.trim() && f.answer.trim());
 
     const cover: ArticleImage = coverUrl
@@ -1074,6 +1133,15 @@ export function SimpleAdminPanel({ onLock, onOpenAdvanced }: SimpleAdminPanelPro
                   </button>
                   <button
                     type="button"
+                    onClick={handleAutoLinkAll}
+                    title="Automatically scan and convert all website names (e.g. google.com, zeewrites.blog) into clickable links"
+                    className="inline-flex items-center gap-1.5 px-3 min-h-[34px] rounded-full bg-badge-bg text-navy dark:text-accent border border-hairline hover:border-navy font-medium text-[13px] transition-colors"
+                  >
+                    <Link2 className="w-3.5 h-3.5 text-navy dark:text-accent" />
+                    <span>Auto-Link Websites</span>
+                  </button>
+                  <button
+                    type="button"
                     onClick={handleSmartFormat}
                     title="Automatically structure text, clean code artifacts, and format headings"
                     className="inline-flex items-center gap-1.5 px-3 min-h-[34px] rounded-full bg-badge-bg text-navy dark:text-accent border border-hairline hover:border-navy font-medium text-[13px] transition-colors"
@@ -1083,23 +1151,44 @@ export function SimpleAdminPanel({ onLock, onOpenAdvanced }: SimpleAdminPanelPro
                   </button>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => setAutoFormatOnPaste((v) => !v)}
-                  title="Automatically format long text when pasted"
-                  className={`inline-flex items-center gap-1.5 px-3 min-h-[32px] rounded-full border text-[12px] font-medium transition-colors ${
-                    autoFormatOnPaste
-                      ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700"
-                      : "bg-surface text-muted border-hairline hover:text-ink"
-                  }`}
-                >
-                  <Check className={`w-3.5 h-3.5 ${autoFormatOnPaste ? "opacity-100" : "opacity-0"}`} />
-                  <span>Auto-format on paste {autoFormatOnPaste ? "ON" : "OFF"}</span>
-                </button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setAutoLinkWebsites((v) => !v)}
+                    title="Automatically convert website names to links when typing space or saving"
+                    className={`inline-flex items-center gap-1.5 px-3 min-h-[32px] rounded-full border text-[12px] font-medium transition-colors ${
+                      autoLinkWebsites
+                        ? "bg-navy/10 text-navy dark:bg-navy/20 dark:text-accent border-navy/30 dark:border-accent/40"
+                        : "bg-surface text-muted border-hairline hover:text-ink"
+                    }`}
+                  >
+                    <Check className={`w-3.5 h-3.5 ${autoLinkWebsites ? "opacity-100" : "opacity-0"}`} />
+                    <span>Auto-link websites {autoLinkWebsites ? "ON" : "OFF"}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setAutoFormatOnPaste((v) => !v)}
+                    title="Automatically format long text when pasted"
+                    className={`inline-flex items-center gap-1.5 px-3 min-h-[32px] rounded-full border text-[12px] font-medium transition-colors ${
+                      autoFormatOnPaste
+                        ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700"
+                        : "bg-surface text-muted border-hairline hover:text-ink"
+                    }`}
+                  >
+                    <Check className={`w-3.5 h-3.5 ${autoFormatOnPaste ? "opacity-100" : "opacity-0"}`} />
+                    <span>Auto-format on paste {autoFormatOnPaste ? "ON" : "OFF"}</span>
+                  </button>
+                </div>
               </div>
 
               {editorMode === "edit" && (
                 <div className="space-y-2">
+                  <div className="flex items-center justify-between text-[11.5px] text-muted px-1">
+                    <span>
+                      💡 <b>Auto-Link Active:</b> Any website name (e.g. <code>google.com</code>, <code>github.com</code>, <code>resend.com</code>) automatically becomes a clickable link when you type space or save.
+                    </span>
+                  </div>
                   <textarea
                     ref={contentRef}
                     value={content}
