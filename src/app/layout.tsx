@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import { Manrope, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { getDatabase } from "@/lib/server-store";
@@ -89,6 +90,19 @@ export default async function RootLayout({
     >
       <head>
         <meta charSet="utf-8" />
+        {/* Google tag (gtag.js) */}
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=G-GZ97F04NGP"
+          strategy="afterInteractive"
+        />
+        <Script id="google-analytics" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-GZ97F04NGP');
+          `}
+        </Script>
         <script dangerouslySetInnerHTML={{ __html: LIGHT_MODE_INIT_SCRIPT }} />
         {settings.gscVerification && (
           <meta name="google-site-verification" content={settings.gscVerification} />
