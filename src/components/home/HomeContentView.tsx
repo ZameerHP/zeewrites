@@ -283,6 +283,7 @@ export function HomeContentView({ initialArticles }: HomeContentViewProps) {
               <div className="lg:scale-[0.85] xl:scale-100 origin-left">
                 <Link
                   href="/tools"
+                  prefetch={true}
                   aria-label="Free Tech Tools: Use them instantly"
                   className="hero-interactive-card group flex items-center justify-between w-[236px] h-[76px] rounded-[18px] bg-surface shadow-2 border border-hairline hover:border-[#4a74f0]/40 px-3.5 py-3 transition-[transform,box-shadow,border-color] duration-hover ease-out-expo animate-float-left rotated-card-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4a74f0] focus-visible:ring-offset-2 hover:shadow-3"
                 >
@@ -319,6 +320,7 @@ export function HomeContentView({ initialArticles }: HomeContentViewProps) {
               <div className="lg:scale-[0.85] xl:scale-100 origin-right">
                 <Link
                   href="/category/how-to-fixes"
+                  prefetch={true}
                   aria-label="Latest Articles: Fresh guides and fixes"
                   style={{ animationDelay: "-3.5s" }}
                   className="hero-interactive-card group flex items-center justify-between w-[236px] h-[76px] rounded-[18px] bg-surface shadow-2 border border-hairline hover:border-[#4a74f0]/40 px-3.5 py-3 transition-[transform,box-shadow,border-color] duration-hover ease-out-expo animate-float-right rotated-card-right focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4a74f0] focus-visible:ring-offset-2 hover:shadow-3"
@@ -437,6 +439,7 @@ export function HomeContentView({ initialArticles }: HomeContentViewProps) {
                     chipRefs.current[index] = el;
                   }}
                   href={chip.href}
+                  prefetch={true}
                   data-hero-chip={chip.id}
                   style={{ animationDelay: `${chip.delayMs}ms` }}
                   className={`hidden md:flex absolute ${chip.positionClass} z-10 w-[176px] h-[64px] rounded-[16px] bg-surface shadow-1 border border-hairline py-[12px] px-[16px] items-center gap-3 hover:-translate-y-[2px] hover:shadow-3 transition-[transform,box-shadow] duration-hover ease-out-expo focus-visible:outline-2 focus-visible:outline-[#4a74f0] focus-visible:outline-offset-2 animate-hero-rise`}
@@ -575,6 +578,7 @@ export function HomeContentView({ initialArticles }: HomeContentViewProps) {
                 <Link
                   key={pill.href}
                   href={pill.href}
+                  prefetch={true}
                   data-quick-pill={pill.label}
                   className="inline-flex items-center justify-center h-[44px] px-[22px] rounded-full bg-surface text-ink border border-hairline shadow-1 text-[15px] font-medium hover:bg-[#00000e] hover:text-[#ffffff] dark:hover:bg-[#f4f7ff] dark:hover:text-[#0b1020] transition-[background-color,color,box-shadow,transform] duration-hover ease-out-expo focus-visible:outline-2 focus-visible:outline-[#4a74f0] focus-visible:outline-offset-2"
                 >
@@ -751,6 +755,7 @@ export function HomeContentView({ initialArticles }: HomeContentViewProps) {
               <Link
                 key={cat.slug}
                 href={`/category/${cat.slug}`}
+                prefetch={true}
                 className="group rounded-[24px] bg-surface border border-hairline shadow-2 hover:shadow-3 hover:-translate-y-[2px] transition-[transform,box-shadow] duration-hover ease-out-expo p-7 flex flex-col justify-between gap-6"
               >
                 <div className="space-y-4">

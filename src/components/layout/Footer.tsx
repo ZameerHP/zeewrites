@@ -44,6 +44,7 @@ export function Footer() {
             <div className="lg:col-span-4 space-y-4">
               <Link
                 href="/"
+                prefetch={true}
                 className="inline-flex items-center gap-3 group min-h-[44px]"
               >
                 <div className="h-10 w-10 rounded-[12px] bg-surface text-ink border border-hairline shadow-1 ring-1 ring-inset ring-white dark:ring-white/15 flex items-center justify-center shrink-0">
@@ -74,6 +75,7 @@ export function Footer() {
                   <li key={cat.slug}>
                     <Link
                       href={`/category/${cat.slug}`}
+                      prefetch={true}
                       className="inline-flex items-center min-h-[36px] text-secondary hover:text-navy transition-colors duration-micro"
                     >
                       {cat.shortName}
@@ -100,6 +102,7 @@ export function Footer() {
                   <li key={link.href}>
                     <Link
                       href={link.href}
+                      prefetch={true}
                       className="inline-flex items-center min-h-[36px] text-secondary hover:text-navy transition-colors duration-micro"
                     >
                       {link.label}

@@ -208,6 +208,7 @@ export function Header() {
           {/* Left: Official ZeeWrites Beveled Z Logo Tile + "Zee Writes" + "Guides & Fixes" */}
           <Link
             href="/"
+            prefetch={true}
             aria-label="Zee Writes Home"
             className="flex items-center gap-3 group shrink-0 min-h-[44px]"
           >
@@ -237,6 +238,7 @@ export function Header() {
                 <Link
                   key={item.href}
                   href={item.href}
+                  prefetch={true}
                   className={`inline-flex items-center gap-1.5 px-3 xl:px-4 py-2 min-h-[44px] rounded-full text-[14px] xl:text-[15px] font-medium transition-colors duration-micro ease-out-expo ${
                     isActive
                       ? "bg-surface text-ink border border-hairline shadow-1"
@@ -274,6 +276,7 @@ export function Header() {
 
             <Link
               href="/contact"
+              prefetch={true}
               className={`hidden sm:inline-flex items-center justify-center gap-2 px-5 min-h-[44px] text-[14px] font-medium btn-primary-pill ${
                 isContactActive ? "ring-2 ring-focus-blue ring-offset-2" : ""
               }`}
@@ -354,6 +357,7 @@ export function Header() {
                   <Link
                     key={item.href}
                     href={item.href}
+                    prefetch={true}
                     onClick={() => setMobileMenuOpen(false)}
                     className={`flex items-center justify-between px-4 min-h-[44px] rounded-[14px] text-[15px] font-medium transition-colors duration-micro ${
                       isActive
@@ -376,6 +380,7 @@ export function Header() {
             <div className="pt-2 border-t border-hairline flex flex-col gap-2">
               <Link
                 href="/contact"
+                prefetch={true}
                 onClick={() => setMobileMenuOpen(false)}
                 className="w-full inline-flex items-center justify-center px-5 min-h-[44px] text-[15px] font-medium btn-primary-pill"
               >

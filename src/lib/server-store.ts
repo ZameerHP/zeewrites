@@ -178,14 +178,29 @@ export function findArticleInList(
   });
 }
 
+// In-flight promise deduplication & sub-second burst cache (immediately cleared on any write/delete)
+let inflightDbPromise: Promise<DatabaseSchema> | null = null;
+let cachedDb: { data: DatabaseSchema; expiresAt: number } | null = null;
+const READ_BURST_TTL_MS = 1200;
+
+export function invalidateServerStoreCache(): void {
+  cachedDb = null;
+  inflightDbPromise = null;
+}
+
 /**
  * Look up a single article by slug or ID from the single source of truth.
+ * Uses the already-loaded database snapshot first (0ms), with direct query fallback.
  * Returns undefined if not found (so the caller can return a real 404).
  */
 export async function getArticleBySlug(
   slug: string
 ): Promise<Article | undefined> {
   if (!slug) return undefined;
+
+  const db = await getDatabase();
+  const foundInDb = findArticleInList(db.articles, slug);
+  if (foundInDb) return foundInDb;
 
   if (isSupabaseConfigured && supabaseAdmin) {
     try {
@@ -206,17 +221,10 @@ export async function getArticleBySlug(
     }
   }
 
-  const db = await getDatabase();
-  return findArticleInList(db.articles, slug);
+  return undefined;
 }
 
-/**
- * Read Database — Single Source of Truth:
- * - When Supabase is configured: reads ONLY from Supabase. Never unions with local files,
- *   never auto-inserts local files back into Supabase, and respects 0 rows as a valid empty state.
- * - When Supabase is not configured (local dev): reads from the single local file store.
- */
-export async function getDatabase(): Promise<DatabaseSchema> {
+async function fetchDatabaseUncached(): Promise<DatabaseSchema> {
   if (isSupabaseConfigured && supabaseAdmin) {
     const [artRes, setRes] = await Promise.all([
       supabaseAdmin
@@ -261,9 +269,44 @@ export async function getDatabase(): Promise<DatabaseSchema> {
 }
 
 /**
+ * Read Database — Single Source of Truth:
+ * - Coalesces concurrent calls within the same render/request (`RootLayout` + `generateMetadata` + `Page`)
+ *   into a single query so page transitions never wait on duplicate sequential round-trips.
+ * - Immediately invalidated on every create, update, or delete.
+ */
+export async function getDatabase(forceFresh = false): Promise<DatabaseSchema> {
+  if (forceFresh) {
+    invalidateServerStoreCache();
+  }
+
+  const now = Date.now();
+  if (cachedDb && cachedDb.expiresAt > now) {
+    return cachedDb.data;
+  }
+
+  if (inflightDbPromise) {
+    return inflightDbPromise;
+  }
+
+  inflightDbPromise = fetchDatabaseUncached()
+    .then((res) => {
+      cachedDb = { data: res, expiresAt: Date.now() + READ_BURST_TTL_MS };
+      inflightDbPromise = null;
+      return res;
+    })
+    .catch((err) => {
+      inflightDbPromise = null;
+      throw err;
+    });
+
+  return inflightDbPromise;
+}
+
+/**
  * Save Article (Insert or Update) — Verified write to the single source of truth.
  */
 export async function saveArticle(article: Article): Promise<SaveArticleResult> {
+  invalidateServerStoreCache();
   if (isSupabaseConfigured && supabaseAdmin) {
     try {
       // Remove any older row with the same slug but different id to avoid unique constraint conflicts
@@ -349,7 +392,7 @@ export async function saveArticle(article: Article): Promise<SaveArticleResult> 
 
     return {
       ok: true,
-      db: await getDatabase(),
+      db: await getDatabase(true),
     };
   }
 
@@ -360,6 +403,7 @@ export async function saveArticle(article: Article): Promise<SaveArticleResult> 
   );
   current.articles.unshift(article);
   const wrote = writeLocalFileStore(current);
+  invalidateServerStoreCache();
   if (!wrote) {
     return {
       ok: false,
@@ -379,6 +423,7 @@ export async function saveArticle(article: Article): Promise<SaveArticleResult> 
  * If 0 rows were removed or RLS blocked the delete, returns `ok: false` with a clear error reason.
  */
 export async function removeArticle(id: string): Promise<DeleteArticleResult> {
+  invalidateServerStoreCache();
   if (!id || typeof id !== "string") {
     return {
       ok: false,
@@ -498,7 +543,7 @@ export async function removeArticle(id: string): Promise<DeleteArticleResult> {
       };
     }
 
-    const dbAfter = await getDatabase();
+    const dbAfter = await getDatabase(true);
     return {
       ok: true,
       deletedCount: allDeletedRows.length,
@@ -522,6 +567,7 @@ export async function removeArticle(id: string): Promise<DeleteArticleResult> {
 
   current.articles = current.articles.filter((a) => a.id !== id && a.slug !== id);
   const wrote = writeLocalFileStore(current);
+  invalidateServerStoreCache();
   if (!wrote) {
     return {
       ok: false,
@@ -566,12 +612,13 @@ export async function saveSettings(
     } catch (err) {
       console.warn("Supabase settings upsert warning:", err);
     }
-    return getDatabase();
+    return getDatabase(true);
   }
 
   const local = readLocalFileStore();
   local.settings = updatedSettings;
   writeLocalFileStore(local);
+  invalidateServerStoreCache();
   return local;
 }
 

@@ -302,10 +302,36 @@ export function SiteProvider({
     };
   }, [refreshCmsData, router]);
 
-  // Keep articles in sync when navigating across routes
+  // Keep articles in sync when navigating into the admin studio
   useEffect(() => {
-    refreshCmsData();
+    if (pathname?.startsWith("/zee-studio-vault")) {
+      refreshCmsData();
+    }
   }, [pathname, refreshCmsData]);
+
+  // Warm-prefetch primary navigation routes on idle so button/nav clicks open instantly
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const timer = setTimeout(() => {
+      const coreRoutes = [
+        "/",
+        "/category/how-to-fixes",
+        "/category/text-guides",
+        "/category/solutions",
+        "/category/tutorials",
+        "/about",
+        "/contact",
+      ];
+      for (const route of coreRoutes) {
+        try {
+          router.prefetch(route);
+        } catch {
+          // ignore
+        }
+      }
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [router]);
 
   // Upsert Article: Verified server-first write (no fake success)
   const upsertArticle = useCallback(

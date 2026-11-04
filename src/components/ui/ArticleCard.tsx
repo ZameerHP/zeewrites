@@ -30,6 +30,7 @@ export function ArticleCard({
   return (
     <Link
       href={`/article/${article.slug}`}
+      prefetch={true}
       className={`group block rounded-[24px] bg-surface border border-hairline shadow-2 hover:shadow-3 hover:-translate-y-[2px] transition-[transform,box-shadow] duration-hover ease-out-expo p-3 focus-visible:outline-2 focus-visible:outline-focus-blue focus-visible:outline-offset-2 ${
         featured
           ? "grid grid-cols-1 lg:grid-cols-12 gap-6 items-center"
