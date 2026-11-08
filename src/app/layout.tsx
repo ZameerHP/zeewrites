@@ -90,6 +90,13 @@ export default async function RootLayout({
     >
       <head>
         <meta charSet="utf-8" />
+        {/* Google AdSense Verification & Auto Ads */}
+        <meta name="google-adsense-account" content="ca-pub-3239203696892345" />
+        <script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3239203696892345"
+          crossOrigin="anonymous"
+        />
         {/* Google tag (gtag.js) */}
         <Script
           src="https://www.googletagmanager.com/gtag/js?id=G-GZ97F04NGP"

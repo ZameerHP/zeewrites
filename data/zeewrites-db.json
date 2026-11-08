@@ -2,15 +2,15 @@
   "articles": [],
   "settings": {
     "siteName": "Zee Writes",
+    "siteTagline": "Guides & Practical Tech Fixes",
     "siteUrl": "https://zeewrites.blog",
-    "contactEmail": "editorial@zeewrites.com",
-    "publisherId": "ca-pub-0000000000000000",
-    "adsenseMode": "off",
-    "adsTxtContent": "google.com, pub-0000000000000000, DIRECT, f08c47fec0942fa0",
+    "publisherId": "ca-pub-3239203696892345",
+    "adsenseMode": "verification",
+    "adsTxtContent": "google.com, pub-3239203696892345, DIRECT, f08c47fec0942fa0",
     "gscVerification": "",
-    "ga4Id": "",
+    "ga4Id": "G-GZ97F04NGP",
     "cookieBannerEnabled": true,
-    "updatedAt": "2026-10-27T00:00:00.000Z",
-    "siteTagline": "Guides & Practical Tech Fixes"
+    "contactEmail": "zameerpanhwer67@gmail.com",
+    "updatedAt": "2026-11-08T00:00:00.000Z"
   }
 }
