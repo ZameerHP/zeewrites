@@ -23,8 +23,12 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
     rules: [
       {
         userAgent: "*",
-        allow: "/",
+        allow: ["/", "/ads.txt"],
         disallow: ["/zee-studio-vault", "/zee-studio-vault/", "/api/"],
+      },
+      {
+        userAgent: "Mediapartners-Google",
+        allow: "/",
       },
     ],
     sitemap: `${baseUrl}/sitemap.xml`,
