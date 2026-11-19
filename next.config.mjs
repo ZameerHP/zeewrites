@@ -57,18 +57,15 @@ const nextConfig = {
   async redirects() {
     return [
       {
-        source: "/editorial-policy",
-        destination: "/about",
+        source:
+          "/article/trending-ai-skills-that-actually-work-in-2026-and-2027-copy",
+        destination:
+          "/article/trending-ai-skills-that-actually-work-in-2026-and-2027",
         permanent: true,
       },
       {
-        source: "/tools",
-        destination: "/",
-        permanent: true,
-      },
-      {
-        source: "/tools/:slug*",
-        destination: "/",
+        source: "/tools/word-counter-readability-analyzer",
+        destination: "/tools/word-counter-analyzer",
         permanent: true,
       },
     ];
