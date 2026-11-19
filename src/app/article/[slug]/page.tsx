@@ -34,7 +34,7 @@ export async function generateMetadata({
       };
     }
 
-    const baseUrl = settings.siteUrl.replace(/\/$/, "");
+    const baseUrl = "https://zeewrites.blog";
     const canonicalUrl = `${baseUrl}/article/${article.slug}`;
 
     return {

@@ -192,6 +192,10 @@ export function Header() {
         label: "Tutorials",
       },
       {
+        href: "/tools",
+        label: "Text Tools",
+      },
+      {
         href: "/about",
         label: "About",
       },

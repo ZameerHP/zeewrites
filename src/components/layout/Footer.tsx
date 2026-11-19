@@ -71,7 +71,7 @@ export function Footer() {
             <div className="lg:col-span-2 space-y-3">
               <h2 className="text-[14px] font-semibold text-ink">Directory</h2>
               <ul className="space-y-2 text-[15px]">
-                {activeCategories.map((cat) => (
+                {CATEGORY_LIST.map((cat) => (
                   <li key={cat.slug}>
                     <Link
                       href={`/category/${cat.slug}`}
@@ -82,6 +82,15 @@ export function Footer() {
                     </Link>
                   </li>
                 ))}
+                <li>
+                  <Link
+                    href="/tools"
+                    prefetch={true}
+                    className="inline-flex items-center min-h-[36px] text-secondary hover:text-navy transition-colors duration-micro"
+                  >
+                    Text Tools
+                  </Link>
+                </li>
               </ul>
             </div>
 
@@ -93,6 +102,7 @@ export function Footer() {
               <ul className="space-y-2 text-[15px]">
                 {[
                   { href: "/about", label: "About Zee Writes" },
+                  { href: "/editorial-policy", label: "Editorial Policy" },
                   { href: "/contact", label: "Contact" },
                   { href: "/privacy-policy", label: "Privacy Policy" },
                   { href: "/terms", label: "Terms" },

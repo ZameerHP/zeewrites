@@ -168,13 +168,21 @@ export function findArticleInList(
   if (!slug || !Array.isArray(articles)) return undefined;
 
   const target = normalizeSlugKey(slug);
+  const targetNoCopy = target.replace(/-copy$/, "");
   const rawTarget = decodeURIComponent(slug).toLowerCase().trim();
 
   return articles.find((a) => {
     if (!a) return false;
     const s = normalizeSlugKey(a.slug || "");
+    const sNoCopy = s.replace(/-copy$/, "");
     const rawS = (a.slug || "").toLowerCase().trim();
-    return s === target || rawS === rawTarget || a.slug === slug || a.id === slug;
+    return (
+      s === target ||
+      sNoCopy === targetNoCopy ||
+      rawS === rawTarget ||
+      a.slug === slug ||
+      a.id === slug
+    );
   });
 }
 
@@ -624,10 +632,10 @@ export async function saveSettings(
 
 const DEFAULT_AUTHOR_FALLBACK = {
   name: "Zee",
-  role: "Lead Systems Architect",
+  role: "Creator & Technical Author",
   credentials: "",
   bio: "Zee writes the guides and maintains the text tools on Zee Writes.",
   avatarInitials: "Z",
-  yearsExperience: 10,
-  verifiedFixesPublished: 120,
+  yearsExperience: 0,
+  verifiedFixesPublished: 0,
 };

@@ -166,8 +166,8 @@ export const ARTICLES_PART_1: Article[] = [
       "clean-normalize-format-messy-pdf-copy-pasted-text",
       "mastering-regular-expressions-regex-text-search-cleanup",
     ],
-    helpfulYes: 412,
-    helpfulNo: 9,
+    helpfulYes: 0,
+    helpfulNo: 0,
   },
   {
     id: "art-02",
@@ -340,8 +340,8 @@ export const ARTICLES_PART_1: Article[] = [
       "core-web-vitals-optimization-eliminate-cls-sub-second-lcp",
       "resolve-git-line-ending-conflicts-crlf-lf-bom-errors",
     ],
-    helpfulYes: 528,
-    helpfulNo: 12,
+    helpfulYes: 0,
+    helpfulNo: 0,
   },
   {
     id: "art-03",
@@ -500,8 +500,8 @@ export const ARTICLES_PART_1: Article[] = [
       "mastering-regular-expressions-regex-text-search-cleanup",
       "markdown-formatting-masterclass-technical-documentation",
     ],
-    helpfulYes: 364,
-    helpfulNo: 6,
+    helpfulYes: 0,
+    helpfulNo: 0,
   },
   {
     id: "art-04",
@@ -655,8 +655,8 @@ export const ARTICLES_PART_1: Article[] = [
       "json-schema-validation-payload-minification-api-fixes",
       "resolve-git-line-ending-conflicts-crlf-lf-bom-errors",
     ],
-    helpfulYes: 319,
-    helpfulNo: 5,
+    helpfulYes: 0,
+    helpfulNo: 0,
   },
   {
     id: "art-05",
@@ -805,7 +805,7 @@ export const ARTICLES_PART_1: Article[] = [
       "json-schema-validation-payload-minification-api-fixes",
       "markdown-formatting-masterclass-technical-documentation",
     ],
-    helpfulYes: 489,
-    helpfulNo: 7,
+    helpfulYes: 0,
+    helpfulNo: 0,
   },
 ];

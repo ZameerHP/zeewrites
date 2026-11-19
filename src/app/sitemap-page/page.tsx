@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { getDatabase } from "@/lib/server-store";
 import { CATEGORIES, CATEGORY_LIST } from "@/data/categories";
+import { TEXT_TOOLS } from "@/data/tools";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -92,11 +93,46 @@ export default async function HtmlSitemapPage() {
 
           <section className="rounded-[24px] bg-surface border border-hairline shadow-2 p-6 sm:p-7 space-y-4">
             <h2 className="font-sans font-semibold text-[18px] text-ink pb-2 border-b border-hairline">
-              2. Legal &amp; Publication Pages
+              2. Browser Text Tools
+            </h2>
+            <ul className="divide-y divide-hairline text-[15px]">
+              <li>
+                <Link
+                  href="/tools"
+                  className="py-2.5 flex items-center justify-between text-ink hover:text-navy font-medium transition-colors duration-micro"
+                >
+                  <span>All Text &amp; Developer Tools</span>
+                  <ArrowRight
+                    className="w-4 h-4 text-muted"
+                    strokeWidth={1.5}
+                  />
+                </Link>
+              </li>
+              {TEXT_TOOLS.map((tool) => (
+                <li key={tool.slug}>
+                  <Link
+                    href={`/tools/${tool.slug}`}
+                    className="py-2.5 flex items-center justify-between text-secondary hover:text-navy transition-colors duration-micro"
+                  >
+                    <span>{tool.shortName}</span>
+                    <ArrowRight
+                      className="w-4 h-4 text-muted"
+                      strokeWidth={1.5}
+                    />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+
+          <section className="rounded-[24px] bg-surface border border-hairline shadow-2 p-6 sm:p-7 space-y-4">
+            <h2 className="font-sans font-semibold text-[18px] text-ink pb-2 border-b border-hairline">
+              3. Legal &amp; Publication Pages
             </h2>
             <ul className="divide-y divide-hairline text-[15px]">
               {[
                 { href: "/about", label: "About" },
+                { href: "/editorial-policy", label: "Editorial Policy" },
                 { href: "/contact", label: "Contact" },
                 { href: "/privacy-policy", label: "Privacy Policy" },
                 { href: "/terms", label: "Terms" },

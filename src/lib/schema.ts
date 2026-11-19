@@ -2,7 +2,7 @@ import { Article, SiteSettings, TextToolDefinition } from "@/types";
 import { DEFAULT_AUTHOR, CATEGORIES } from "@/data/categories";
 
 export function generateHomepageJsonLd(settings: SiteSettings) {
-  const baseUrl = settings.siteUrl.replace(/\/$/, "");
+  const baseUrl = "https://zeewrites.blog";
   return {
     "@context": "https://schema.org",
     "@graph": [
@@ -52,7 +52,7 @@ export function generateHomepageJsonLd(settings: SiteSettings) {
 }
 
 export function generateArticleJsonLd(article: Article, settings: SiteSettings) {
-  const baseUrl = settings.siteUrl.replace(/\/$/, "");
+  const baseUrl = "https://zeewrites.blog";
   const articleUrl = `${baseUrl}/article/${article.slug}`;
   const categoryInfo = CATEGORIES[article.category];
 
@@ -160,7 +160,7 @@ export function generateToolJsonLd(
   tool: TextToolDefinition,
   settings: SiteSettings
 ) {
-  const baseUrl = settings.siteUrl.replace(/\/$/, "");
+  const baseUrl = "https://zeewrites.blog";
   const toolUrl = `${baseUrl}/tools/${tool.slug}`;
 
   return {

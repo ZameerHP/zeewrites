@@ -1,24 +1,8 @@
 import { MetadataRoute } from "next";
-import { headers } from "next/headers";
-import { getDatabase } from "@/lib/server-store";
 
-export const dynamic = "force-dynamic";
+const CANONICAL_BASE_URL = "https://zeewrites.blog";
 
-export default async function robots(): Promise<MetadataRoute.Robots> {
-  const { settings } = await getDatabase();
-  let baseUrl = (settings.siteUrl || "https://zeewrites.blog").replace(/\/$/, "");
-
-  try {
-    const h = await headers();
-    const host = h.get("x-forwarded-host") || h.get("host");
-    const proto = h.get("x-forwarded-proto") || "https";
-    if (host && !host.includes("localhost") && !host.includes("127.0.0.1")) {
-      baseUrl = `${proto}://${host}`;
-    }
-  } catch {
-    // Fallback if headers cannot be resolved
-  }
-
+export default function robots(): MetadataRoute.Robots {
   return {
     rules: [
       {
@@ -31,7 +15,7 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
         allow: "/",
       },
     ],
-    sitemap: `${baseUrl}/sitemap.xml`,
-    host: baseUrl,
+    sitemap: `${CANONICAL_BASE_URL}/sitemap.xml`,
+    host: CANONICAL_BASE_URL,
   };
 }

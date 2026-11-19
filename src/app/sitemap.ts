@@ -1,25 +1,16 @@
 import { MetadataRoute } from "next";
-import { headers } from "next/headers";
 import { getDatabase } from "@/lib/server-store";
 import { CATEGORY_LIST } from "@/data/categories";
+import { TEXT_TOOLS } from "@/data/tools";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const { articles, settings } = await getDatabase();
-  let baseUrl = (settings.siteUrl || "https://zeewrites.blog").replace(/\/$/, "");
+const CANONICAL_BASE_URL = "https://zeewrites.blog";
 
-  try {
-    const h = await headers();
-    const host = h.get("x-forwarded-host") || h.get("host");
-    const proto = h.get("x-forwarded-proto") || "https";
-    if (host && !host.includes("localhost") && !host.includes("127.0.0.1")) {
-      baseUrl = `${proto}://${host}`;
-    }
-  } catch {
-    // Fallback if headers cannot be resolved
-  }
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const { articles } = await getDatabase();
+  const baseUrl = CANONICAL_BASE_URL;
 
   const staticPages: MetadataRoute.Sitemap = [
     {
@@ -29,7 +20,19 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 1.0,
     },
     {
+      url: `${baseUrl}/tools`,
+      lastModified: new Date(),
+      changeFrequency: "weekly",
+      priority: 0.9,
+    },
+    {
       url: `${baseUrl}/about`,
+      lastModified: new Date(),
+      changeFrequency: "monthly",
+      priority: 0.8,
+    },
+    {
+      url: `${baseUrl}/editorial-policy`,
       lastModified: new Date(),
       changeFrequency: "monthly",
       priority: 0.8,
@@ -73,6 +76,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.9,
   }));
 
+  const toolPages: MetadataRoute.Sitemap = TEXT_TOOLS.map((tool) => ({
+    url: `${baseUrl}/tools/${tool.slug}`,
+    lastModified: new Date(),
+    changeFrequency: "monthly",
+    priority: 0.85,
+  }));
+
   const articlePages: MetadataRoute.Sitemap = articles
     .filter((a) => a.status === "published")
     .map((article) => ({
@@ -82,5 +92,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.85,
     }));
 
-  return [...staticPages, ...categoryPages, ...articlePages];
+  return [...staticPages, ...categoryPages, ...toolPages, ...articlePages];
 }

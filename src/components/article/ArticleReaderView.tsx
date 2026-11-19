@@ -1045,6 +1045,94 @@ export function ArticleReaderView({
               </div>
             </section>
           )}
+
+          {/* Topic Tags & Author / Editorial Information Card */}
+          <section
+            aria-label="Author and Editorial Standards"
+            className="pt-8 border-t border-hairline max-w-[68ch] space-y-6"
+          >
+            {article.tags && article.tags.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[13px] font-medium text-muted mr-1">
+                  Topics:
+                </span>
+                {article.tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="px-3 py-1 rounded-full bg-surface border border-hairline text-[13px] font-medium text-secondary"
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            <div className="rounded-[24px] bg-surface border border-hairline shadow-2 p-6 sm:p-7 space-y-4">
+              <div className="flex items-start justify-between gap-4 flex-wrap">
+                <div className="flex items-center gap-3.5">
+                  <div className="h-12 w-12 rounded-[14px] bg-surface border border-hairline shadow-1 flex items-center justify-center shrink-0">
+                    <ZeeMark size={28} />
+                  </div>
+                  <div>
+                    <div className="font-sans font-semibold text-[17px] text-ink">
+                      Written by Zee
+                    </div>
+                    <div className="text-[13.5px] text-muted">
+                      Creator &amp; Technical Author, Zee Writes
+                    </div>
+                  </div>
+                </div>
+
+                {article.testedOn && (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-badge-bg text-badge-text text-[12.5px] font-medium">
+                    <span className="w-1.5 h-1.5 rounded-full bg-badge-dot" />
+                    <span>Tested on: {article.testedOn}</span>
+                  </span>
+                )}
+              </div>
+
+              <p className="text-[15.5px] text-secondary leading-[1.65]">
+                Zee writes the troubleshooting guides, AI prompting workflows,
+                and maintains the client-side{" "}
+                <Link
+                  href="/tools"
+                  prefetch={true}
+                  className="text-navy font-semibold underline underline-offset-2"
+                >
+                  browser text utilities
+                </Link>{" "}
+                on Zee Writes. Every article is structured to explain the root
+                cause, step-by-step resolution, and practical limitations
+                clearly.
+              </p>
+
+              <div className="pt-3 border-t border-hairline flex flex-wrap items-center gap-4 text-[13.5px] font-medium">
+                <Link
+                  href="/about"
+                  prefetch={true}
+                  className="text-navy hover:underline"
+                >
+                  About Zee Writes
+                </Link>
+                <span className="text-muted">&middot;</span>
+                <Link
+                  href="/editorial-policy"
+                  prefetch={true}
+                  className="text-navy hover:underline"
+                >
+                  Editorial &amp; Testing Policy
+                </Link>
+                <span className="text-muted">&middot;</span>
+                <Link
+                  href="/contact"
+                  prefetch={true}
+                  className="text-navy hover:underline"
+                >
+                  Report a Correction
+                </Link>
+              </div>
+            </div>
+          </section>
         </article>
 
         {/* Right 4-Column Sticky Sidebar: Table of Contents + Contact Card */}

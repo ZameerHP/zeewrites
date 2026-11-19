@@ -159,8 +159,8 @@ export const ARTICLES_PART_2: Article[] = [
       "fix-corrupted-utf8-text-mojibake-zero-width-characters",
       "markdown-formatting-masterclass-technical-documentation",
     ],
-    helpfulYes: 391,
-    helpfulNo: 8,
+    helpfulYes: 0,
+    helpfulNo: 0,
   },
   {
     id: "art-07",
@@ -313,8 +313,8 @@ export const ARTICLES_PART_2: Article[] = [
       "fix-err-ssl-protocol-error-dns-resolution-failures",
       "why-copy-pasted-code-breaks-smart-quotes-nbsp-sanitization",
     ],
-    helpfulYes: 447,
-    helpfulNo: 11,
+    helpfulYes: 0,
+    helpfulNo: 0,
   },
   {
     id: "art-08",
@@ -464,8 +464,8 @@ export const ARTICLES_PART_2: Article[] = [
       "mastering-regular-expressions-regex-text-search-cleanup",
       "core-web-vitals-optimization-eliminate-cls-sub-second-lcp",
     ],
-    helpfulYes: 342,
-    helpfulNo: 4,
+    helpfulYes: 0,
+    helpfulNo: 0,
   },
   {
     id: "art-09",
@@ -613,8 +613,8 @@ export const ARTICLES_PART_2: Article[] = [
       "fix-corrupted-utf8-text-mojibake-zero-width-characters",
       "json-schema-validation-payload-minification-api-fixes",
     ],
-    helpfulYes: 378,
-    helpfulNo: 6,
+    helpfulYes: 0,
+    helpfulNo: 0,
   },
   {
     id: "art-10",
@@ -773,7 +773,7 @@ export const ARTICLES_PART_2: Article[] = [
       "core-web-vitals-optimization-eliminate-cls-sub-second-lcp",
       "resolve-git-line-ending-conflicts-crlf-lf-bom-errors",
     ],
-    helpfulYes: 405,
-    helpfulNo: 5,
+    helpfulYes: 0,
+    helpfulNo: 0,
   },
 ];
